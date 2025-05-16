@@ -47,6 +47,9 @@ const App = () => {
   <Toaster />
       <Routes>
         {/* Normal routes */}
+
+
+        
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/about" element={<CompanyAboutPage />} />
