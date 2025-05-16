@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -394,17 +393,22 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={endDate || undefined}
-                          onSelect={(newDate) => {
-                            if (newDate) {
-                              setEndDate(new Date(newDate))
-                            }
-                          }}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                        />
+<Input
+  type="date"
+  value={endDate ? formatDate(endDate) : ""}
+  onChange={(e) => {
+    const newDate = new Date(e.target.value);
+    if (!isNaN(newDate.getTime())) {
+      setEndDate(newDate);
+    }
+  }}
+  className={cn(
+    "ml-2 w-48",
+    endCondition !== "on_date" && "opacity-50 pointer-events-none"
+  )}
+  disabled={endCondition !== "on_date"}
+  min={formatDate(new Date())} // Prevent past dates
+/>
                       </PopoverContent>
                     </Popover>
                   </div>
