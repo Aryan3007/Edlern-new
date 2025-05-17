@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Bell, Search, ChevronDown, Menu, X, User, Settings, LogOut, MessageSquare } from "lucide-react"
+import { Bell, Search, ChevronDown, Menu, X, User, Settings, LogOut, MessageSquare, LayoutDashboard } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,10 +22,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useMobile } from "@/hooks/use-mobile"
 import { Link, useParams } from "react-router-dom"
 import { ThemeToggle } from "./theme-toggle"
-import { useDispatch, useSelector } from "react-redux"
-import { persistor, RootState } from "@/store/store"
+
 import { toast } from "sonner"
-import { logout } from "@/store/authSlice"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store/store"
 
 // Define the community type interface
 interface Community {
@@ -59,13 +59,6 @@ export default function Header() {
   const [userCommunities, setUserCommunities] = useState<Community[]>([])
   const [currentCommunity, setCurrentCommunity] = useState<Community | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const dispatch = useDispatch()
-  const handleLogout = () => {
-    dispatch(logout())
-    persistor.purge()
-    navigate("/login")
-  }
 
 
 
@@ -576,6 +569,12 @@ export default function Header() {
                   <Link to={`/${currentCommunity.community_id || currentCommunity.id}/community/settings`} className="flex items-center w-full">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem>
+                  <Link to={`/${currentCommunity.community_id || currentCommunity.id}/community/analytics`} className="flex items-center w-full">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Analytics</span>
                   </Link>
                 </DropdownMenuItem>
              

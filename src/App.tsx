@@ -86,7 +86,8 @@ const App = () => {
           <Route path="about" element={<AboutPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="analytics" element={<AdminPage />} />
         </Routes>
       </Layout>
     </ProtectedRoute>

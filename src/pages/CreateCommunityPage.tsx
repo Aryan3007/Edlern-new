@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { CheckCircle2, ChevronLeft, ChevronRight, Globe, ImageIcon, Upload, Users } from "lucide-react"
+import { SERVER_URL } from "@/config/config"
 
 // Interfaces for API data
 interface Category {
@@ -105,7 +106,7 @@ export default function CreateCommunityPage() {
     const fetchCategories = async () => {
       setLoadingCategories(true)
       try {
-        const response = await fetch("https://edlern.toolsfactory.tech/api/v1/community/categories/", {
+        const response = await fetch(`${SERVER_URL}/api/v1/community/categories/`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -224,7 +225,7 @@ export default function CreateCommunityPage() {
     }
 
     try {
-      const response = await fetch("https://edlern.toolsfactory.tech/api/v1/community/", {
+      const response = await fetch(`${SERVER_URL}/api/v1/community/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
