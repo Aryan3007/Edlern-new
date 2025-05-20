@@ -1,23 +1,112 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Heart, MessageSquare, MoreHorizontal, Share2, Star, Maximize2, LinkIcon } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Post } from "./types/community"
+import axios from "axios"
+import { useSelector } from "react-redux"
+import type { RootState } from "@/store/store"
+import type { Post } from "./types/community"
+import { SERVER_URL } from "@/config/config"
+import { toast } from "sonner"
 
-interface PostCardProps {
-  post: Post;
-  formatRelativeTime: (dateString: string) => string;
-  getAuthorInitial: (authorName: string | undefined) => string;
-  openPostDetail: (post: Post) => void;
+// Utility for debouncing to prevent rapid clicks
+function useDebounce<T extends (...args: any[]) => any>(callback: T, delay: number) {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  return useCallback(
+    (...args: Parameters<T>) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+      timeoutRef.current = setTimeout(() => {
+        callback(...args)
+      }, delay)
+    },
+    [callback, delay]
+  )
 }
 
-export function PostCard({ post, formatRelativeTime, getAuthorInitial, openPostDetail }: PostCardProps) {
-  // Render post content
+interface PostCardProps {
+  post: Post
+  communityId: string
+  formatRelativeTime: (dateString: string) => string
+  getAuthorInitial: (authorName: string | undefined) => string
+  openPostDetail: (post: Post) => void
+  onLikeToggle?: (postId: number, newLikeState: boolean, newLikeCount: number) => void
+}
+
+export function PostCard({
+  post,
+  communityId,
+  formatRelativeTime,
+  getAuthorInitial,
+  openPostDetail,
+  onLikeToggle,
+}: PostCardProps) {
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken)
+  const [isLiking, setIsLiking] = useState(false)
+  const [isLiked, setIsLiked] = useState(post.is_liked_by_me || false)
+  const [likeCount, setLikeCount] = useState(Math.max(0, post.total_likes || 0))
+  const latestStateRef = useRef({ isLiked, likeCount })
+
+  // Update ref whenever state changes
+  latestStateRef.current = { isLiked, likeCount }
+
+  // Handle post like toggle
+  const handleLikePost = useDebounce(
+    useCallback(async () => {
+      if (!accessToken || isLiking) {
+        toast.error("Please log in to like this post.")
+        return
+      }
+
+      const newLikeState = !isLiked
+      const newLikeCount = Math.max(0, newLikeState ? likeCount + 1 : likeCount - 1)
+
+      // Optimistic update
+      setIsLiked(newLikeState)
+      setLikeCount(newLikeCount)
+      setIsLiking(true)
+
+      try {
+        const response = await axios.post(
+          `${SERVER_URL}/api/v1/community/${communityId}/feed/posts/${post.id}/like-toggle/`,
+          { is_like: newLikeState },
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        )
+
+        if (!response.data.success) {
+          throw new Error(response.data.message || "Failed to toggle like")
+        }
+
+        // Sync with server response if available
+        const serverLikeState = response.data.is_liked ?? newLikeState
+        const serverLikeCount = Math.max(0, response.data.total_likes ?? newLikeCount)
+        setIsLiked(serverLikeState)
+        setLikeCount(serverLikeCount)
+
+        // Notify parent
+        onLikeToggle?.(post.id, serverLikeState, serverLikeCount)
+      } catch (err: any) {
+        // Revert on error
+        setIsLiked(latestStateRef.current.isLiked)
+        setLikeCount(latestStateRef.current.likeCount)
+
+        toast.error("Failed to update like status. Please try again.")
+        console.error("Error toggling like:", err)
+      } finally {
+        setIsLiking(false)
+      }
+    }, [accessToken, isLiked, likeCount, communityId, post.id, isLiking, onLikeToggle]),
+    300 // 300ms debounce
+  )
+
+  // Render post content (unchanged)
   const renderPostContent = useCallback((post: Post) => {
     return (
       <div className="whitespace-pre-line">
@@ -51,49 +140,25 @@ export function PostCard({ post, formatRelativeTime, getAuthorInitial, openPostD
             ))}
           </div>
         )}
-        {post.poll && (
-          <div className="mt-3 border rounded-md p-3 bg-gray-50">
-            <h3 className="font-medium">{post.poll.question}</h3>
-            <div className="mt-2 space-y-2">
-              {post.poll.options.map((option) => (
-                <div key={option.id} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-gray-300" />
-                    <span>{option.text}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${option.votes}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 text-sm text-gray-500">
-              Poll ends: {post.poll.end_date ? new Date(post.poll.end_date).toLocaleDateString() : "Unknown"}
-            </div>
-          </div>
-        )}
       </div>
     )
   }, [])
 
-  // Render image grid
+  // Render image grid (unchanged)
   const renderImageGrid = useCallback((attachments: string[]) => {
     if (!attachments || attachments.length === 0) return null
 
-    const maxVisibleImages = 4 // First image + 3 in the grid
+    const maxVisibleImages = 4
     const remainingImages = attachments.length > maxVisibleImages ? attachments.length - maxVisibleImages : 0
 
     return (
       <div className="lg:max-w-64 w-full space-y-2">
-        {/* First Image - Horizontal */}
         <img
           src={attachments[0] || "/placeholder.svg"}
           alt="Media 1"
           className="w-44 h-auto rounded-md object-cover"
           loading="lazy"
         />
-
-        {/* Remaining Images - Grid of 3 */}
         {attachments.length > 1 && (
           <div className="grid grid-cols-3 gap-2">
             {attachments.slice(1, maxVisibleImages).map((url, index) => (
@@ -104,7 +169,6 @@ export function PostCard({ post, formatRelativeTime, getAuthorInitial, openPostD
                   className="w-64 h-24 rounded-md object-cover"
                   loading="lazy"
                 />
-                {/* Overlay for +X if there are more images */}
                 {index === maxVisibleImages - 2 && remainingImages > 0 && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
                     <span className="text-white font-semibold text-lg">+{remainingImages}</span>
@@ -144,9 +208,8 @@ export function PostCard({ post, formatRelativeTime, getAuthorInitial, openPostD
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Save post</DropdownMenuItem>
-            <DropdownMenuItem>Report</DropdownMenuItem>
-            <DropdownMenuItem>Hide</DropdownMenuItem>
+            <DropdownMenuItem>Pin post</DropdownMenuItem>
+            <DropdownMenuItem>Delete post</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
@@ -166,13 +229,18 @@ export function PostCard({ post, formatRelativeTime, getAuthorInitial, openPostD
       <CardFooter className="p-4 pt-0 flex justify-between">
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
             size="sm"
-            className="gap-1 text-gray-600 hover:text-pink-600"
-            aria-label={`Like post with ${post.total_likes} likes`}
+            className={`gap-1 ${isLiked ? "text-pink-600" : "text-gray-600"} hover:text-pink-600`}
+            onClick={handleLikePost}
+            disabled={isLiking || !accessToken}
+            aria-label={`${isLiked ? "Unlike" : "Like"} post with ${likeCount} likes`}
           >
-            <Heart className="h-4 w-4" />
-            <span>{post.total_likes}</span>
+            {isLiking ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent mr-1" />
+            ) : (
+              <Heart className={`h-4 w-4 ${isLiked ? "fill-pink-600" : ""}`} />
+            )}
+            <span>{likeCount}</span>
           </Button>
           <Button
             variant="ghost"

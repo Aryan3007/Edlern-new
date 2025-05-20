@@ -2,14 +2,13 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
@@ -23,37 +22,48 @@ import {
 import { SERVER_URL } from "@/config/config"
 import { RootState } from "@/store/store"
 import { useSelector } from "react-redux"
+import type { EventOccurrence } from "./event-types"
 
 interface AddEventDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddEvent: () => void
   communityId: number
+  eventToEdit?: EventOccurrence
 }
 
-export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: AddEventDialogProps) {
+export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId, eventToEdit }: AddEventDialogProps) {
   const accessToken = useSelector((state: RootState) => state.auth.accessToken)
 
-  const [title, setTitle] = useState("")
-  const [date, setDate] = useState<Date>(new Date())
-  const [time, setTime] = useState("10:00")
-  const [durationMinutes, setDurationMinutes] = useState("30")
-  const [timezone, setTimezone] = useState("Asia/Kolkata")
-  const [location, setLocation] = useState("zoom")
-  const [locationDetails, setLocationDetails] = useState("")
-  const [description, setDescription] = useState("")
-  const [eventAccessType, setEventAccessType] = useState("all")
-  const [memberLevel, setMemberLevel] = useState<string | null>(null)
-  const [sendReminderEmail, setSendReminderEmail] = useState(false)
+  const [title, setTitle] = useState(eventToEdit?.title || "")
+  const [date, setDate] = useState<Date>(eventToEdit ? new Date(eventToEdit.date) : new Date())
+  const [time, setTime] = useState(() => {
+    if (eventToEdit?.time) {
+      // Handle both formats: "HH:mm" and "YYYY-MM-DDTHH:mm:ss"
+      const timeStr = eventToEdit.time.includes('T')
+        ? eventToEdit.time.split('T')[1]
+        : eventToEdit.time
+      return timeStr.slice(0, 5) // Get HH:mm part
+    }
+    return "10:00"
+  })
+  const [durationMinutes, setDurationMinutes] = useState(eventToEdit?.duration_minutes.toString() || "30")
+  const [timezone, setTimezone] = useState(eventToEdit?.timezone || "Asia/Kolkata")
+  const [location, setLocation] = useState(eventToEdit?.location || "zoom")
+  const [locationDetails, setLocationDetails] = useState(eventToEdit?.link || "")
+  const [description, setDescription] = useState(eventToEdit?.description || "")
+  const [eventAccessType, setEventAccessType] = useState(eventToEdit?.event_access_type || "all")
+  const [memberLevel, setMemberLevel] = useState<string | null>(eventToEdit?.member_level?.toString() || null)
+  const [sendReminderEmail, setSendReminderEmail] = useState(eventToEdit?.send_reminder_email || false)
 
   // Recurring event fields
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [frequency, setFrequency] = useState("daily")
-  const [interval, setInterval] = useState("1")
-  const [daysOfWeek, setDaysOfWeek] = useState<string[]>([])
-  const [endCondition, setEndCondition] = useState("never")
-  const [endDate, setEndDate] = useState<Date | null>(null)
-  const [occurrences, setOccurrences] = useState("5")
+  const [isRecurring, setIsRecurring] = useState(eventToEdit?.is_recurring || false)
+  const [frequency, setFrequency] = useState(eventToEdit?.frequency || "daily")
+  const [interval, setInterval] = useState(eventToEdit?.interval?.toString() || "1")
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>(eventToEdit?.days_of_week || [])
+  const [endCondition, setEndCondition] = useState(eventToEdit?.end_condition || "never")
+  const [endDate, setEndDate] = useState<Date | null>(eventToEdit?.end_date ? new Date(eventToEdit.end_date) : null)
+  const [occurrences, setOccurrences] = useState(eventToEdit?.occurrences?.toString() || "5")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -103,14 +113,6 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
     return `${year}-${month}-${day}`
   }
 
-  // Format date for display (e.g., "Jan 1, 2025")
-  const formatDisplayDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
 
   // Format time for display (e.g., "10:00 AM")
   const formatDisplayTime = (time: string): string => {
@@ -162,20 +164,23 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
         })
       }
 
-      // Create the event
-      const response = await fetch(`${SERVER_URL}/api/v1/calendar/community/${communityId}/events/`, {
-        method: "POST",
+      const url = eventToEdit
+        ? `${SERVER_URL}/api/v1/calendar/community/${communityId}/events/${eventToEdit.event}/event-occurrence/${eventToEdit.id}/`
+        : `${SERVER_URL}/api/v1/calendar/community/${communityId}/events/`
+
+      // Create or update the event
+      const response = await fetch(url, {
+        method: eventToEdit ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
-
         },
         body: JSON.stringify(eventData),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || `Failed to create event: ${response.status}`)
+        throw new Error(errorData.message || `Failed to ${eventToEdit ? 'update' : 'create'} event: ${response.status}`)
       }
 
       const data = await response.json()
@@ -183,11 +188,11 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
       if (data.success) {
         onAddEvent()
       } else {
-        setError("Failed to create event")
+        setError(`Failed to ${eventToEdit ? 'update' : 'create'} event`)
       }
     } catch (err) {
-      console.error("Error creating event:", err)
-      setError("An error occurred while creating the event")
+      console.error(`Error ${eventToEdit ? 'updating' : 'creating'} event:`, err)
+      setError(`An error occurred while ${eventToEdit ? 'updating' : 'creating'} the event`)
     } finally {
       setIsSubmitting(false)
     }
@@ -235,19 +240,19 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
             <div className="space-y-2">
               <Label>Date</Label>
               <div className="flex border rounded-lg py-1.5 bg-accent/50 items-center space-x-2">
-      <input
-        type="date"
-        value={endDate ? formatDate(endDate) : ""}
-        onChange={(e) => {
-          const date = new Date(e.target.value);
-          if (!isNaN(date.getTime())) {
-            setEndDate(date);
-          }
-        }}
-        className={`ml-2 ${endCondition !== "on_date" ? "opacity-50 text-white" : ""}`}
-      />
-    </div>
-
+                <input
+                  type="date"
+                  value={formatDate(date)}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                      setDate(newDate);
+                    }
+                  }}
+                  className="ml-2"
+                  min={formatDate(new Date())} // Prevent past dates
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -381,36 +386,24 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
                   <div className="flex items-center space-x-2 py-1">
                     <RadioGroupItem value="on_date" id="on_date" />
                     <Label htmlFor="on_date">On</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn("ml-2", endCondition !== "on_date" && "opacity-50 pointer-events-none")}
-                          disabled={endCondition !== "on_date"}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? formatDisplayDate(endDate) : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-<Input
-  type="date"
-  value={endDate ? formatDate(endDate) : ""}
-  onChange={(e) => {
-    const newDate = new Date(e.target.value);
-    if (!isNaN(newDate.getTime())) {
-      setEndDate(newDate);
-    }
-  }}
-  className={cn(
-    "ml-2 w-48",
-    endCondition !== "on_date" && "opacity-50 pointer-events-none"
-  )}
-  disabled={endCondition !== "on_date"}
-  min={formatDate(new Date())} // Prevent past dates
-/>
-                      </PopoverContent>
-                    </Popover>
+                    <div className="flex border rounded-lg py-1.5 bg-accent/50 items-center space-x-2">
+                      <input
+                        type="date"
+                        value={endDate ? formatDate(endDate) : ""}
+                        onChange={(e) => {
+                          const newDate = new Date(e.target.value);
+                          if (!isNaN(newDate.getTime())) {
+                            setEndDate(newDate);
+                          }
+                        }}
+                        className={cn(
+                          "ml-2",
+                          endCondition !== "on_date" && "opacity-50 pointer-events-none"
+                        )}
+                        disabled={endCondition !== "on_date"}
+                        min={formatDate(date)} // Prevent dates before start date
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-2 py-1">
@@ -528,10 +521,10 @@ export function AddEventDialog({ open, onOpenChange, onAddEvent, communityId }: 
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {eventToEdit ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                "Add"
+                eventToEdit ? 'Update' : 'Add'
               )}
             </Button>
           </div>

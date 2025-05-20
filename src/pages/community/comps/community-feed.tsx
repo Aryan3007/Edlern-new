@@ -13,10 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PostCreationDialog } from "./post-creation-dialog"
-import { ApiResponse, Post } from "./types/community"
+import type { ApiResponse, Post, Comment as CommunityComment } from "./types/community"
 import { PostCard } from "./post-card"
 import { PostDetailDialog } from "./post-detail-dialog"
-
+import { SERVER_URL } from "@/config/config"
 
 interface CommunityFeedProps {
   communityId: string
@@ -38,6 +38,8 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const limit = 10
+  const [isAddingComment, setIsAddingComment] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
 
   // Fetch posts from API
   const fetchPosts = useCallback(
@@ -51,7 +53,7 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
       try {
         setLoading(true)
         const response = await axios.get<ApiResponse>(
-          `https://edlern.toolsfactory.tech/api/v1/community/${communityId}/feed/posts/?page=${pageNum}&limit=${limit}`,
+          `${SERVER_URL}/api/v1/community/${communityId}/feed/posts/?page=${pageNum}&limit=${limit}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -79,6 +81,15 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
     fetchPosts(page)
   }, [fetchPosts, page])
 
+  // Handle like toggle from PostCard
+  const handleLikeToggle = useCallback((postId: number, newLikeState: boolean, newLikeCount: number) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId ? { ...post, is_liked: newLikeState, total_likes: newLikeCount } : post,
+      ),
+    )
+  }, [])
+
   // Filter posts
   const filteredPosts = useMemo(
     () =>
@@ -97,32 +108,44 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
     async (postId: number) => {
       if (!newComment.trim() || !accessToken) return
 
+      setIsAddingComment(true)
+      setCommentError(null)
+
       try {
-        const response = await axios.post<{ data: Comment }>(
-          `https://edlern.toolsfactory.tech/api/v1/community/${communityId}/posts/${postId}/comments/`,
+        const response = await axios.post<{ success: boolean; data: CommunityComment; message?: string }>(
+          `${SERVER_URL}/api/v1/community/${communityId}/feed/posts/${postId}/comments/`,
           { content: newComment },
-          { headers: { Authorization: `Bearer ${accessToken}` } },
+          { headers: { Authorization: `Bearer ${accessToken}` } }
         )
 
-        const newCommentData = response.data.data
+        if (!response.data.success) {
+          throw new Error(response.data.message || "Failed to add comment")
+        }
+        // Update the post with the new comment
         setPosts((prevPosts) =>
           prevPosts.map((post) =>
             post.id === postId
-              ? ({
-                  ...post,
-                  comments: [...(post.comments || []), newCommentData],
-                  total_comments: post.total_comments + 1,
-                } as Post)
-              : post,
-          ),
+              ? {
+                ...post,
+                comments: [...((post.comments ?? []) as CommunityComment[]), response.data.data],
+                total_comments: (post.total_comments || 0) + 1,
+              }
+              : post
+          )
         )
+
         setNewComment("")
       } catch (err) {
+        const errorMessage = axios.isAxiosError(err)
+          ? err.response?.data?.message || err.message
+          : "Failed to add comment"
+        setCommentError(errorMessage)
         console.error("Error adding comment:", err)
-        setError("Failed to add comment")
+      } finally {
+        setIsAddingComment(false)
       }
     },
-    [accessToken, communityId, newComment],
+    [accessToken, communityId, newComment]
   )
 
   // Post detail view
@@ -256,9 +279,11 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
             <PostCard
               key={post.id}
               post={post}
+              communityId={communityId}
               formatRelativeTime={formatRelativeTime}
               getAuthorInitial={getAuthorInitial}
               openPostDetail={openPostDetail}
+              onLikeToggle={handleLikeToggle}
             />
           ))
         ) : (
@@ -299,6 +324,9 @@ export function CommunityFeed({ communityId }: CommunityFeedProps) {
         handleAddComment={handleAddComment}
         newComment={newComment}
         setNewComment={setNewComment}
+        onLikeToggle={handleLikeToggle}
+        isAddingComment={isAddingComment}
+        commentError={commentError}
       />
     </div>
   )

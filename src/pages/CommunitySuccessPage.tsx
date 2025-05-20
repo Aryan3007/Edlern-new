@@ -57,17 +57,7 @@ export default function CommunitySuccessPage() {
           </Button>
         </motion.div>
 
-        <motion.div
-          className="mt-4 text-sm text-slate-500"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          <p>Share your community link with others:</p>
-          <div className="mt-2 p-2 bg-slate-50 rounded-md flex items-center justify-center border border-slate-200">
-            <code className="text-sky-600">skool.com/your-community</code>
-          </div>
-        </motion.div>
+     
       </motion.div>
     </div>
   )

@@ -1,64 +1,52 @@
+import { useState, useEffect } from "react";
 
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+interface Community {
+  _id: string;
+  cover_image?: string;
+  title: string;
+  creator: {
+    first_name: string;
+    last_name: string;
+  };
+  is_paid: boolean;
+  category_name?: string;
+  price: string;
+}
 
-// Sample data for trending communities
-const trendingCommunities = [
-  {
-    id: "golf-swing",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "Golf Swing Simplified",
-    author: "Tom Saguto, PGA",
-    price: "From $19 / month",
-    category: "sports",
-  },
-  {
-    id: "the-collective",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "The Collective",
-    author: "Allison Venditti",
-    price: "$897 / year",
-    category: "business",
-  },
-  {
-    id: "the-lab",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "The Lab",
-    author: "Jay Clouse",
-    price: "$699 / year",
-    category: "creativity",
-  },
-  {
-    id: "troophr",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "TroopHR Membership",
-    author: "Tracy Avin",
-    price: "$700 / year",
-    category: "career",
-  },
-  {
-    id: "auggie-community",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "Auggie Community",
-    author: "Lily Walla",
-    price: "FREE",
-    category: "lifestyle",
-  },
-  {
-    id: "web-designer-pro",
-    image: "https://images.unsplash.com/photo-1744922679571-e6d7e9a8804c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",    title: "Web Designer Pro™ - Coaching",
-    author: "Josh Hall",
-    price: "From $199 / month",
-    category: "design",
-  },
-]
+interface TrendingSectionProps {
+  communities: Community[];
+}
 
-export default function TrendingSection() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [filteredCommunities, setFilteredCommunities] = useState(trendingCommunities)
+export default function TrendingSection({ communities }: TrendingSectionProps) {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filteredCommunities, setFilteredCommunities] = useState(communities);
 
+  // Since API category is null, we'll use a fallback or skip category filtering
   useEffect(() => {
     if (selectedCategory) {
-      setFilteredCommunities(trendingCommunities.filter((community) => community.category === selectedCategory))
+      setFilteredCommunities(
+        communities.filter((community) => community.category_name === selectedCategory)
+      );
     } else {
-      setFilteredCommunities(trendingCommunities)
+      setFilteredCommunities(communities);
     }
-  }, [selectedCategory])
+  }, [selectedCategory, communities]);
+
+  // Get unique categories (since API returns null, this will be empty or limited)
+  const categories = Array.from(
+    new Set(communities.map((c) => c.category_name).filter((c): c is string => c !== undefined))
+  );
+
+  const handleCategoryChange = (category: string | null) => {
+    setSelectedCategory(category);
+    if (category) {
+      setFilteredCommunities(
+        communities.filter((community) => community.category_name === category)
+      );
+    } else {
+      setFilteredCommunities(communities);
+    }
+  };
 
   return (
     <section className="w-full text-black py-12">
@@ -67,22 +55,20 @@ export default function TrendingSection() {
           <h2 className="text-3xl font-bold tracking-tight">Trending</h2>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                selectedCategory === null ? "bg-sky-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              onClick={() => handleCategoryChange(null)}
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedCategory === null ? "bg-sky-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               All
             </button>
-            {Array.from(new Set(trendingCommunities.map((c) => c.category))).map((category) => (
+            {categories.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-3 py-1 text-sm rounded-full capitalize transition-colors ${
-                  selectedCategory === category
-                    ? "bg-sky-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                onClick={() => handleCategoryChange(category)}
+                className={`px-3 py-1 text-sm rounded-full capitalize transition-colors ${selectedCategory === category
+                  ? "bg-sky-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 {category}
               </button>
@@ -91,56 +77,38 @@ export default function TrendingSection() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCommunities.map((community) => (
-            <TrendingCard
-              key={community.id}
-              id={community.id}
-              image={community.image}
-              title={community.title}
-              author={community.author}
-              price={community.price}
-              category={community.category}
-            />
+            <div key={community._id} className="w-full sm:w-1/2 lg:w-1/3 p-4">
+              <CommunityCard community={community} />
+            </div>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-function TrendingCard({
-  id,
-  image,
-  title,
-  author,
-  price,
-  category,
-}: {
-  id: string
-  image: string
-  title: string
-  author: string
-  price: string
-  category: string
-}) {
+const CommunityCard = ({ community }: { community: Community }) => {
   return (
-    <Link to={`/community-details/${id}`} className="group flex items-start gap-4">
-      <div className="relative h-24 w-24 overflow-hidden rounded-lg border bg-gray-100">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="relative h-48">
         <img
-          src={image || "/placeholder.svg"}
-          alt={title}
-          width={100}
-          height={100}
-          className="h-full w-full object-cover"
+          src={community.cover_image || '/placeholder.jpg'}
+          alt={community.title}
+          className="w-full h-full object-cover"
         />
       </div>
-      <div>
-        <div className="mb-1">
-          <span className="text-xs font-medium text-gray-500 capitalize">{category}</span>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold mb-2">{community.title}</h3>
+        <p className="text-gray-600 mb-2">
+          {community.creator.first_name} {community.creator.last_name}
+        </p>
+        <div className="flex justify-between items-center">
+          <span className="text-primary font-medium">
+            {community.is_paid ? `$${community.price}` : 'Free'}
+          </span>
+          <span className="text-sm text-gray-500">{community.category_name || 'General'}</span>
         </div>
-        <h3 className="font-bold text-lg group-hover:text-sky-600">{title}</h3>
-        <p className="text-gray-500 text-sm">{author}</p>
-        <p className="text-sm mt-1">{price}</p>
       </div>
-    </Link>
-  )
-}
+    </div>
+  );
+};

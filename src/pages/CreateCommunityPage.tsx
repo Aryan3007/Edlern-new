@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -15,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { CheckCircle2, ChevronLeft, ChevronRight, Globe, ImageIcon, Upload, Users } from "lucide-react"
 import { SERVER_URL } from "@/config/config"
+import { toast } from "sonner"
 
 // Interfaces for API data
 interface Category {
@@ -100,6 +102,18 @@ export default function CreateCommunityPage() {
   const [categoriesError, setCategoriesError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<{
+    basicInfo?: { name?: string; description?: string; category?: string }
+    settings?: {
+      privacy?: string
+      memberApproval?: string
+      allowInvitations?: string
+      contentCreation?: string
+      commentPermission?: string
+      directMessages?: string
+    }
+    branding?: { logo?: string; banner?: string }
+  }>({})
 
   // Fetch categories
   useEffect(() => {
@@ -117,7 +131,8 @@ export default function CreateCommunityPage() {
         }
         const data: CategoriesResponse = await response.json()
         if (!data.success) {
-          throw new Error(data.message)
+          toast.error(data.message)
+
         }
         setCategories(data.data.results)
         setCategoriesError(null)
@@ -143,6 +158,14 @@ export default function CreateCommunityPage() {
         [field]: value,
       },
     }))
+    // Clear validation error for the field
+    setValidationErrors((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: undefined,
+      },
+    }))
   }
 
   // Handle file uploads
@@ -164,6 +187,71 @@ export default function CreateCommunityPage() {
     }
   }
 
+  // Validate steps
+  const validateBasicInfo = () => {
+    const errors: { name?: string; description?: string; category?: string } = {}
+    if (!formData.basicInfo.name.trim()) {
+      errors.name = "Community name is required"
+    }
+    if (!formData.basicInfo.description.trim()) {
+      errors.description = "Description is required"
+    }
+    if (!formData.basicInfo.category) {
+      errors.category = "Category is required"
+    }
+    return errors
+  }
+
+  const validateSettings = () => {
+    const errors: {
+      privacy?: string
+      memberApproval?: string
+      allowInvitations?: string
+      contentCreation?: string
+      commentPermission?: string
+      directMessages?: string
+    } = {}
+    if (!formData.settings.privacy) {
+      errors.privacy = "Privacy level is required"
+    }
+    // memberApproval and allowInvitations are booleans, so always valid
+    if (!formData.settings.contentCreation) {
+      errors.contentCreation = "Content creation permission is required"
+    }
+    if (!formData.settings.commentPermission) {
+      errors.commentPermission = "Comment permission is required"
+    }
+    if (!formData.settings.directMessages) {
+      errors.directMessages = "Direct messages permission is required"
+    }
+    return errors
+  }
+
+  const validateBranding = () => {
+    const errors: { logo?: string; banner?: string } = {}
+    if (!formData.branding.logo) {
+      errors.logo = "Community logo is required"
+    }
+    if (!formData.branding.banner) {
+      errors.banner = "Community banner is required"
+    }
+    return errors
+  }
+
+  // Check if step is valid
+  const isStepValid = () => {
+    if (step === 1) {
+      return Object.keys(validateBasicInfo()).length === 0
+    }
+    if (step === 2) {
+      return Object.keys(validateSettings()).length === 0
+    }
+    if (step === 3) {
+      return Object.keys(validateBranding()).length === 0
+    }
+    return true // Step 4 (Review) has no fields to validate
+  }
+
   // Navigation
   const goToNextStep = () => {
     setDirection("next")
@@ -173,34 +261,70 @@ export default function CreateCommunityPage() {
   const goToPrevStep = () => {
     setDirection("prev")
     setStep((prevStep) => Math.max(prevStep - 1, 1))
+    setValidationErrors({}) // Clear errors when going back
   }
 
   // Form submissions
   const onBasicInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.basicInfo.name || !formData.basicInfo.description || !formData.basicInfo.category) {
+    const errors = validateBasicInfo()
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors({ basicInfo: errors })
       setSubmitError("Please fill all required fields")
       return
     }
     setSubmitError(null)
+    setValidationErrors({})
     goToNextStep()
   }
 
   const onSettingsSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validateSettings()
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors({ settings: errors })
+      setSubmitError("Please fill all required fields")
+      return
+    }
     setSubmitError(null)
+    setValidationErrors({})
     goToNextStep()
   }
 
   const onBrandingSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validateBranding()
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors({ branding: errors })
+      setSubmitError("Please upload both logo and banner")
+      return
+    }
     setSubmitError(null)
+    setValidationErrors({})
     goToNextStep()
   }
 
   const onFinalSubmit = async () => {
     if (!accessToken) {
       setSubmitError("Authentication token is missing")
+      return
+    }
+
+    // Validate all steps before submission
+    const basicInfoErrors = validateBasicInfo()
+    const settingsErrors = validateSettings()
+    const brandingErrors = validateBranding()
+    if (
+      Object.keys(basicInfoErrors).length > 0 ||
+      Object.keys(settingsErrors).length > 0 ||
+      Object.keys(brandingErrors).length > 0
+    ) {
+      setValidationErrors({
+        basicInfo: basicInfoErrors,
+        settings: settingsErrors,
+        branding: brandingErrors,
+      })
+      setSubmitError("Please complete all required fields in previous steps")
       return
     }
 
@@ -239,10 +363,16 @@ export default function CreateCommunityPage() {
 
       const data = await response.json()
       if (!data.success) {
-        throw new Error(data.message)
+        toast.error(data.message)
+
+      }
+      if (data.success) {
+        localStorage.removeItem("edlern_user_communities")
+        localStorage.removeItem("edlern_current_community")
       }
 
-      navigate("/community-creation/successfull")
+      navigate(`/community-creation/successfull/${data.id}`)
+
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to create community")
     } finally {
@@ -293,13 +423,12 @@ export default function CreateCommunityPage() {
               ].map((item) => (
                 <div key={item.number} className="flex items-center gap-3">
                   <motion.div
-                    className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                      step === item.number
+                    className={`flex items-center justify-center w-8 h-8 rounded-full ${step === item.number
                         ? "bg-white text-sky-600"
                         : step > item.number
-                        ? "bg-sky-400 text-white"
-                        : "bg-sky-800 text-white"
-                    } font-bold text-sm`}
+                          ? "bg-sky-400 text-white"
+                          : "bg-sky-800 text-white"
+                      } font-bold text-sm`}
                     whileHover={{ scale: 1.1 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
                   >
@@ -349,9 +478,13 @@ export default function CreateCommunityPage() {
                             placeholder="e.g., Adonis Gang"
                             value={formData.basicInfo.name}
                             onChange={(e) => handleInputChange("basicInfo", "name", e.target.value)}
-                            className="w-full p-3 rounded-md border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all"
+                            className={`w-full p-3 rounded-md border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.basicInfo?.name ? "border-red-500" : ""
+                              }`}
                             required
                           />
+                          {validationErrors.basicInfo?.name && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.basicInfo.name}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">
                             This is how your community will appear across the platform
                           </p>
@@ -364,11 +497,15 @@ export default function CreateCommunityPage() {
                           <Textarea
                             id="description"
                             placeholder="Tell potential members what your community is about"
-                            className="min-h-[100px] border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all"
+                            className={`min-h-[100px] border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.basicInfo?.description ? "border-red-500" : ""
+                              }`}
                             value={formData.basicInfo.description}
                             onChange={(e) => handleInputChange("basicInfo", "description", e.target.value)}
                             required
                           />
+                          {validationErrors.basicInfo?.description && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.basicInfo.description}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">Briefly describe your community's purpose and values</p>
                         </div>
 
@@ -381,7 +518,8 @@ export default function CreateCommunityPage() {
                             value={formData.basicInfo.category}
                             disabled={loadingCategories || !!categoriesError}
                           >
-                            <SelectTrigger className="border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all">
+                            <SelectTrigger className={`border-slate-300 focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.basicInfo?.category ? "border-red-500" : ""
+                              }`}>
                               <SelectValue placeholder={loadingCategories ? "Loading categories..." : "Select a category"} />
                             </SelectTrigger>
                             <SelectContent>
@@ -392,6 +530,9 @@ export default function CreateCommunityPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                          {validationErrors.basicInfo?.category && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.basicInfo.category}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">Categorizing your community helps with discovery</p>
                         </div>
                       </div>
@@ -417,7 +558,8 @@ export default function CreateCommunityPage() {
                           <RadioGroup
                             onValueChange={(value) => handleInputChange("settings", "privacy", value as "public" | "private")}
                             value={formData.settings.privacy}
-                            className="grid grid-col-1 lg:grid-cols-2 space-y-3"
+                            className={`grid grid-col-1 lg:grid-cols-2 space-y-3 ${validationErrors.settings?.privacy ? "border-red-500 rounded-md p-2" : ""
+                              }`}
                           >
                             <motion.div
                               className="flex items-center space-x-3 space-y-0 border p-3 rounded-md hover:border-sky-300 h-full hover:bg-sky-50 transition-colors"
@@ -451,6 +593,9 @@ export default function CreateCommunityPage() {
                               </label>
                             </motion.div>
                           </RadioGroup>
+                          {validationErrors.settings?.privacy && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.settings.privacy}</p>
+                          )}
                         </div>
 
                         <div className="space-y-4">
@@ -504,7 +649,8 @@ export default function CreateCommunityPage() {
                                 onValueChange={(value) => handleInputChange("settings", "contentCreation", value as "1" | "2" | "3" | "4")}
                                 value={formData.settings.contentCreation}
                               >
-                                <SelectTrigger className="border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all">
+                                <SelectTrigger className={`border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.settings?.contentCreation ? "border-red-500" : ""
+                                  }`}>
                                   <SelectValue placeholder="Select permission" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -515,6 +661,9 @@ export default function CreateCommunityPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {validationErrors.settings?.contentCreation && (
+                                <p className="text-xs text-red-600 mt-1">{validationErrors.settings.contentCreation}</p>
+                              )}
                             </div>
 
                             <div className="group w-full">
@@ -525,7 +674,8 @@ export default function CreateCommunityPage() {
                                 onValueChange={(value) => handleInputChange("settings", "commentPermission", value as "1" | "2" | "3" | "4")}
                                 value={formData.settings.commentPermission}
                               >
-                                <SelectTrigger className="border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all">
+                                <SelectTrigger className={`border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.settings?.commentPermission ? "border-red-500" : ""
+                                  }`}>
                                   <SelectValue placeholder="Select permission" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -536,6 +686,9 @@ export default function CreateCommunityPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {validationErrors.settings?.commentPermission && (
+                                <p className="text-xs text-red-600 mt-1">{validationErrors.settings.commentPermission}</p>
+                              )}
                             </div>
 
                             <div className="group w-full">
@@ -546,7 +699,8 @@ export default function CreateCommunityPage() {
                                 onValueChange={(value) => handleInputChange("settings", "directMessages", value as "1" | "2" | "3" | "4")}
                                 value={formData.settings.directMessages}
                               >
-                                <SelectTrigger className="border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all">
+                                <SelectTrigger className={`border-slate-300 w-full focus:border-sky-500 focus:ring-sky-500 transition-all ${validationErrors.settings?.directMessages ? "border-red-500" : ""
+                                  }`}>
                                   <SelectValue placeholder="Select permission" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -557,6 +711,9 @@ export default function CreateCommunityPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {validationErrors.settings?.directMessages && (
+                                <p className="text-xs text-red-600 mt-1">{validationErrors.settings.directMessages}</p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -582,7 +739,7 @@ export default function CreateCommunityPage() {
                           </label>
                           <div className="flex items-center space-x-4">
                             <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                              <Avatar className="w-16 h-16 border-2 border-sky-100">
+                              <Avatar className={`w-16 h-16 border-2 ${validationErrors.branding?.logo ? "border-red-500" : "border-sky-100"}`}>
                                 {logoPreview ? (
                                   <AvatarImage src={logoPreview} alt="Community Logo" />
                                 ) : (
@@ -606,6 +763,7 @@ export default function CreateCommunityPage() {
                                 className="hidden"
                                 onChange={handleLogoUpload}
                                 accept="image/*"
+                                required
                               />
                             </motion.label>
                             {logoPreview && (
@@ -622,15 +780,19 @@ export default function CreateCommunityPage() {
                               </Button>
                             )}
                           </div>
+                          {validationErrors.branding?.logo && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.branding.logo}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">Recommended size: 192x192 pixels</p>
                         </div>
 
                         <div className="group">
                           <label htmlFor="banner" className="block text-sm font-medium text-slate-700 mb-3 group-hover:text-sky-600 transition-colors">
-                            Community Banner (Optional)
+                            Community Banner
                           </label>
                           <motion.div
-                            className="relative w-full overflow-hidden rounded-md aspect-video bg-sky-50 border-2 h-44 border-dashed border-sky-200"
+                            className={`relative w-full overflow-hidden rounded-md aspect-video bg-sky-50 border-2 h-44 border-dashed ${validationErrors.branding?.banner ? "border-red-500" : "border-sky-200"
+                              }`}
                             whileHover={{ scale: 1.01 }}
                             transition={{ type: "spring", stiffness: 400, damping: 10 }}
                           >
@@ -662,6 +824,7 @@ export default function CreateCommunityPage() {
                                 className="hidden"
                                 onChange={handleBannerUpload}
                                 accept="image/*"
+                                required
                               />
                             </motion.label>
                             {bannerPreview && (
@@ -678,6 +841,9 @@ export default function CreateCommunityPage() {
                               </Button>
                             )}
                           </div>
+                          {validationErrors.branding?.banner && (
+                            <p className="text-xs text-red-600 mt-1">{validationErrors.branding.banner}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">Recommended size: 1200x300 pixels</p>
                         </div>
                       </div>
@@ -808,7 +974,7 @@ export default function CreateCommunityPage() {
                   step === 1 ? "basic-info-form" : step === 2 ? "settings-form" : "branding-form"
                 }
                 className="bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1 transition-colors"
-                disabled={loadingCategories || submitting}
+                disabled={loadingCategories || submitting || !isStepValid()}
               >
                 Next Step
                 <ChevronRight className="h-4 w-4" />
@@ -819,7 +985,7 @@ export default function CreateCommunityPage() {
                 className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                disabled={loadingCategories || submitting}
+                disabled={loadingCategories || submitting || !isStepValid()}
               >
                 {submitting ? "Creating..." : "Create Community"}
               </motion.button>

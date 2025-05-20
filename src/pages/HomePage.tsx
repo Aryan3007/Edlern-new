@@ -2,7 +2,6 @@ import Navbar from '@/components/Navbar'
 import BottomCTA from '@/section/BottomCTA'
 import CommunitySection from '@/section/community-section'
 import FAQSection from '@/section/faq-section'
-import FeaturesSection from '@/section/features-section'
 import Footer from '@/section/footer'
 import Hero from '@/section/Hero'
 import PricingSection from '@/section/pricing-section'
@@ -22,7 +21,6 @@ const HomePage = () => {
        <Navbar />
         <Hero/>
         <TabsSection/>
-        <FeaturesSection/>
         <CommunitySection/>
         <TestimonialsSection/>
         <PricingSection/>

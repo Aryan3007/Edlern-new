@@ -18,7 +18,7 @@ export default function ClassroomPage() {
     const fetchUserRole = async () => {
       // This is a placeholder - in a real app, you would make an API call
       // to determine if the user is a creator (admin) or member
-      const isCreator = 0 // For demo purposes, randomly assign role
+      const isCreator = 1 // For demo purposes, randomly assign role
       setUserRole(isCreator ? "creator" : "member")
     }
 

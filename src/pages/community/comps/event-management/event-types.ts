@@ -20,6 +20,14 @@ export interface EventOccurrence {
   community: number
   organizer: string
   course: number | null
+  is_recurring?: boolean
+  frequency?: string
+  interval?: number
+  days_of_week?: string[] | null
+  bymonthday?: number | null
+  end_condition?: string
+  end_date?: string | null
+  occurrences?: number
 }
 
 export interface Event {

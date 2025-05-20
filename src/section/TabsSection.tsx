@@ -68,8 +68,22 @@ const TabsSection: React.FC = () => {
     <div className="h-full pt-12 bg-white">
       {/* Header */}
       <header className=" py-4 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial="hidden"
+      
+          className="text-center mb-16 max-w-3xl mx-auto"
+        >
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 :text-white mb-4">
+            Everything You Need to Build a 
+          </h2>
+          <h3 className="text-2xl md:text-4xl font-semibold text-sky-600 :text-sky-500 mb-6">
+            Thriving Community
+          </h3>
+          <p className="text-lg text-gray-600 :text-gray-300">
+            Our platform provides all the tools you need to create, grow, and monetize your online community.
+          </p>
+        </motion.div>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-center items-center gap-4">
-
 
           {/* Tabs */}
           <nav className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 p-2">

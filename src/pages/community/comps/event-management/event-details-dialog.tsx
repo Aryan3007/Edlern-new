@@ -57,31 +57,31 @@ export function EventDetailsDialog({
           "January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"
         ]
-        
+
         const dayOfWeek = days[date.getDay()]
         const month = months[date.getMonth()]
         const day = date.getDate()
-        
+
         let daySuffix = "th"
         if (day === 1 || day === 21 || day === 31) daySuffix = "st"
         else if (day === 2 || day === 22) daySuffix = "nd"
         else if (day === 3 || day === 23) daySuffix = "rd"
-        
+
         return `${dayOfWeek}, ${month} ${day}${daySuffix}`
       }
-      
+
       // Format h:mm a
       if (formatStr === "h:mm a" || formatStr === " h:mm a") {
         let hours = date.getHours()
         const minutes = date.getMinutes().toString().padStart(2, '0')
         const ampm = hours >= 12 ? 'PM' : 'AM'
-        
+
         hours = hours % 12
         hours = hours || 12 // Convert 0 to 12 for 12 AM
-        
+
         return `${formatStr.startsWith(" ") ? " " : ""}${hours}:${minutes} ${ampm}`
       }
-      
+
       // Default fallback
       return date.toLocaleString()
     } catch (error) {
@@ -165,6 +165,7 @@ export function EventDetailsDialog({
         }}
         onAddEvent={handleEditComplete}
         communityId={event.community}
+        eventToEdit={event}
       />
     )
   }
@@ -176,12 +177,12 @@ export function EventDetailsDialog({
       const eventTime = parseISO(event.time)
       const formattedDate = formatDate(eventDate, "EEEE, MMMM d'th'")
       const formattedStartTime = formatDate(eventTime, "h:mm a")
-      
+
       // Calculate end time by adding duration
       const combinedDateTime = combineDateAndTime(event.date, event.time)
       const endTime = addMinutes(combinedDateTime, event.duration_minutes)
       const formattedEndTime = formatDate(endTime, " h:mm a")
-      
+
       return (
         <>
           <div>

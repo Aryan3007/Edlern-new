@@ -27,6 +27,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 import { persistor, RootState } from "@/store/store"
 import { logout } from "@/store/authSlice"
+import { SERVER_URL } from "@/config/config"
 
 interface Community {
   community_id?: number
@@ -216,7 +217,7 @@ const Navbar: React.FC = () => {
         return []
       }
 
-      const response = await fetch("https://edlern.toolsfactory.tech/api/v1/accounts/my-communities/", {
+      const response = await fetch(`${SERVER_URL}/api/v1/accounts/my-communities/`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${accessToken}`,
