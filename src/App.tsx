@@ -40,6 +40,8 @@ import EventsPage from "./pages/community/pages/EventsPage"
 import DigitalProductsPage from "./pages/DigitalProductsPage"
 import DigitalProductDetailPage from "./pages/DigitalProductDetailPage"
 import ProtectedRoute from "./hooks/ProtectedRoute"
+import VerifyEmailPage from "./pages/VerifyEmailPage"
+import CheckEmailPage from "./pages/CheckEmailPage"
 
 const App = () => {
   return (
@@ -52,6 +54,8 @@ const App = () => {
         
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<AuthPage />} />
+        <Route path="//auth/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/auth/check-verify-email" element={<CheckEmailPage />} />
         <Route path="/about" element={<CompanyAboutPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/careers" element={<CareersPage />} />

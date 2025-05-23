@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +56,7 @@ export function LessonsTab({
 }: LessonsTabProps) {
   const [isCreateLessonOpen, setIsCreateLessonOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [lessonForm, setLessonForm] = useState<{
     title: string;
     content: string;
@@ -87,9 +87,75 @@ export function LessonsTab({
     if (!selectedModule?.lessons || selectedModule.lessons.length === 0) {
       return 1;
     }
-
     const maxOrder = Math.max(...selectedModule.lessons.map((lesson: Lesson) => lesson.order));
     return maxOrder + 1;
+  };
+
+  const handleLessonVideoUpload = async (file: File) => {
+    setVideoUploading(true);
+    try {
+      const response = await fetch(`${SERVER_URL}/api/v1/common/generate-s3-upload-url/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          file_name: file.name,
+          content_type: "mp4",
+          key: `community_${communityId}/lessons/${file.name}`,
+        }),
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        toast.error("Failed to get upload URL");
+        setVideoUploading(false);
+        return;
+      }
+
+      const { url, fields } = result.data;
+
+      // Clean the key to remove redundant path and encode special characters
+      const keyParts = fields.key.split("/");
+      const fileName = keyParts.pop().split("/")[0]; // Get the last part and remove redundant path
+      const cleanKey = [...keyParts, fileName].join("/");
+      const encodedKey = cleanKey
+        .split("/")
+        .map((part) => encodeURIComponent(part))
+        .join("/");
+      const video_uploaded_url = `${url}${encodedKey}`;
+
+      // Upload to S3
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      formData.append("file", file);
+
+      const upload = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!upload.ok) {
+        toast.error("Video upload failed.");
+        setVideoUploading(false);
+        return;
+      }
+
+      // Update lessonForm with the encoded URL
+      setLessonForm((prev) => ({
+        ...prev,
+        video_uploaded_url: video_uploaded_url,
+        video_file: null, // Clear the file after upload
+      }));
+      toast.success("Video uploaded!");
+    } catch (err) {
+      toast.error("Video upload failed.");
+    } finally {
+      setVideoUploading(false);
+    }
   };
 
   const createLesson = async () => {
@@ -102,19 +168,13 @@ export function LessonsTab({
       const formData = new FormData();
       formData.append("title", lessonForm.title);
       formData.append("content", lessonForm.content);
-      formData.append("video_url", lessonForm.video_url);
+      // Prefer video_uploaded_url if available, otherwise fall back to video_url
+      formData.append("video_url", lessonForm.video_uploaded_url || lessonForm.video_url);
       formData.append("order", lessonForm.order.toString());
       formData.append("release_date", lessonForm.release_date);
       formData.append("is_active", lessonForm.is_active.toString());
       formData.append("is_deleted", lessonForm.is_deleted.toString());
-
-      if (lessonForm.video_file) {
-        formData.append("video_file", lessonForm.video_file);
-      }
-
-      if (lessonForm.video_uploaded_url) {
-        formData.append("video_uploaded_url", lessonForm.video_uploaded_url);
-      }
+      formData.append("is_uploaded_video_deleted", lessonForm.is_uploaded_video_deleted.toString());
 
       if (lessonForm.file_url) {
         formData.append("file_url", lessonForm.file_url);
@@ -145,8 +205,6 @@ export function LessonsTab({
           is_uploaded_video_deleted: false,
         });
         setIsCreateLessonOpen(false);
-
-        // Refresh module details to get the updated lessons list
         await fetchModuleLessons(selectedModule.id);
       } else {
         throw new Error(data.message);
@@ -232,7 +290,7 @@ export function LessonsTab({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="lesson-video">Video URL</Label>
+                  <Label htmlFor="lesson-video">Video URL (Optional)</Label>
                   <Input
                     id="lesson-video"
                     placeholder="Enter video URL"
@@ -241,30 +299,35 @@ export function LessonsTab({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="lesson-file-url">File URL</Label>
+                  <Label htmlFor="lesson-video-file">Video File (Optional)</Label>
+                  <Input
+                    id="lesson-video-file"
+                    type="file"
+                    accept="video/mp4"
+                    onChange={(e) => {
+                      const file = e.target.files ? e.target.files[0] : null;
+                      if (file) {
+                        setLessonForm({ ...lessonForm, video_file: file });
+                        handleLessonVideoUpload(file);
+                      }
+                    }}
+                    disabled={videoUploading}
+                  />
+                  {videoUploading && <span className="text-xs text-blue-500">Uploading video...</span>}
+                  {lessonForm.video_uploaded_url && (
+                    <span className="text-xs text-green-600">
+                      Video uploaded: {lessonForm.video_uploaded_url}
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lesson-file-url">File URL (Optional)</Label>
                   <Input
                     id="lesson-file-url"
                     placeholder="Enter file URL"
                     value={lessonForm.file_url}
                     onChange={(e) => setLessonForm({ ...lessonForm, file_url: e.target.value })}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="lesson-video-file">Video File</Label>
-                  <Input
-                    id="lesson-video-file"
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) =>
-                      setLessonForm({
-                        ...lessonForm,
-                        video_file: e.target.files ? e.target.files[0] : null,
-                      })
-                    }
-                  />
-                  {lessonForm.video_file && (
-                    <p className="text-sm text-muted-foreground">Selected: {lessonForm.video_file.name}</p>
-                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
@@ -309,9 +372,9 @@ export function LessonsTab({
                 </Button>
                 <Button
                   onClick={createLesson}
-                  disabled={loading || !lessonForm.title || !lessonForm.content}
+                  disabled={loading || !lessonForm.title || !lessonForm.content || videoUploading}
                 >
-                  {loading ? "Creating..." : "Create Lesson"}
+                  {loading || videoUploading ? "Creating..." : "Create Lesson"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -420,10 +483,12 @@ export function LessonsTab({
                       <div className="text-sm text-muted-foreground line-clamp-2">
                         {lesson.content || "No content provided"}
                       </div>
-                      {lesson.video_url && (
+                      {(lesson.video_url || lessonForm.video_uploaded_url) && (
                         <div className="flex items-center gap-2 mt-2 text-sm">
                           <Video className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground truncate">{lesson.video_url}</span>
+                          <span className="text-muted-foreground truncate">
+                            {lesson.video_url || lessonForm.video_uploaded_url}
+                          </span>
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-2">

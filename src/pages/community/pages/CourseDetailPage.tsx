@@ -52,6 +52,7 @@ interface Lesson {
   title: string;
   content: string;
   video_url: string;
+  video_uploaded_url: string | null;
   order: number;
   release_date: string;
   is_active: boolean;
@@ -191,6 +192,32 @@ export default function YouTubeStyleCourseLayout() {
     }
   };
 
+  // Clean and select the appropriate video URL
+  const getVideoUrl = (lesson: Lesson): string => {
+    const url = lesson.video_uploaded_url || lesson.video_url;
+    if (!url) return "";
+    // Clean redundant path in S3 URLs
+    if (url.includes("edlern-dev.s3.amazonaws.com")) {
+      const parts = url.split("/");
+      const fileName = parts.pop()?.split("/")[0] || "";
+      return [...parts, fileName].join("/");
+    }
+    return url;
+  };
+
+  // Determine if the URL is a YouTube video
+  const isYouTubeUrl = (url: string): boolean => {
+    return url.includes("youtu.be") || url.includes("youtube.com");
+  };
+
+  // Convert YouTube URL to embed format
+  const getYouTubeEmbedUrl = (url: string): string => {
+    const videoId = url.includes("youtu.be")
+      ? url.split("/").pop()?.split("?")[0]
+      : url.split("v=")[1]?.split("&")[0];
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center" aria-live="polite">Loading...</div>;
   }
@@ -209,6 +236,8 @@ export default function YouTubeStyleCourseLayout() {
     );
   }
 
+  const videoUrl = getVideoUrl(currentLesson);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto">
@@ -218,22 +247,31 @@ export default function YouTubeStyleCourseLayout() {
             {/* Video Player Container */}
             <div className="w-full rounded-xl mt-4 overflow-hidden bg-black">
               <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <img
-                    src={currentLesson.video_url || "/placeholder.svg?height=480&width=854&text=Video+Player"}
-                    alt={currentLesson.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Button
-                      size="icon"
-                      className="h-16 w-16 rounded-full bg-sky-600/90 hover:bg-sky-600"
-                      aria-label="Play video"
+                {videoUrl ? (
+                  isYouTubeUrl(videoUrl) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(videoUrl)}
+                      className="absolute inset-0 w-full h-full"
+                      title={currentLesson.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      controls
+                      className="absolute inset-0 w-full h-full object-contain"
+                      title={currentLesson.title}
                     >
-                      <Play className="h-8 w-8 text-sky-600-foreground" fill="currentColor" />
-                    </Button>
+                      <source src={videoUrl} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  )
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-white">
+                    No video available for this lesson.
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -322,17 +360,17 @@ export default function YouTubeStyleCourseLayout() {
                                 </div>
                               </div>
                               {resource.file && (
-  <Button
-    variant="outline"
-    size="sm"
-    className="gap-1"
-    onClick={() => window.open(resource.file ?? '', "_blank")}
-    aria-label={`Download ${resource.name}`}
-  >
-    <FileText className="h-4 w-4" />
-    Download
-  </Button>
-)}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => window.open(resource.file ?? '', "_blank")}
+                                  aria-label={`Download ${resource.name}`}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  Download
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -347,13 +385,6 @@ export default function YouTubeStyleCourseLayout() {
           {/* Sidebar */}
           <div className="w-full lg:w-4/12 relative">
             <div className={`mt-2 lg:mt-4 ${sidebarOpen || window.innerWidth < 1024 ? "block" : "hidden lg:block"}`}>
-              {/* Course Title */}
-              {/* <Card className="mb-4">
-                <CardContent className="p-4">
-                  <h2 className="font-bold">{course.title}</h2>
-                </CardContent>
-              </Card> */}
-
               {/* Playlist */}
               <div className="border rounded-lg overflow-hidden mb-4">
                 <div className="p-3 bg-secondary/50 flex items-center justify-between">

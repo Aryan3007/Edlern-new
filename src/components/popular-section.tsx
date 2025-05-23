@@ -2,14 +2,20 @@ import { Link } from "react-router-dom";
 
 interface Community {
   id: number;
-  cover_image?: string;
   name: string;
-  creator_info?: { first_name: string; last_name: string };
-  is_paid?: boolean;
-  category: string;
-  title: string;
-  author: string;
-  price: number;
+  banner_image: string | null; // Updated to match API
+  community_logo: string | null;
+  description: string;
+  category: string | null;
+  creator_info: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  community_type: string;
+  is_free: boolean;
+  monthly_pricing: number;
+  yearly_pricing: number;
 }
 
 interface PopularSectionProps {
@@ -25,11 +31,12 @@ export default function PopularSection({ communities }: PopularSectionProps) {
           {communities.map((community) => (
             <PopularCard
               key={community.id}
-              image={community.cover_image || "/placeholder.svg"}
-              category={community.category || "General"}
+              id={community.id}
+              image={community.banner_image || "/placeholder.svg"} // Updated to banner_image
+              category={community.category || "Uncategorized"} // Fallback for null category
               title={community.name}
-              author={`${community.creator_info?.first_name ?? ""} ${community.creator_info?.last_name ?? ""}`}
-              price={community.is_paid ? community.price : 0}
+              author={`${community.creator_info.first_name} ${community.creator_info.last_name}`}
+              price={community.is_free ? 0 : community.monthly_pricing}
             />
           ))}
         </div>
@@ -38,7 +45,17 @@ export default function PopularSection({ communities }: PopularSectionProps) {
   );
 }
 
+interface CommunityCardProps {
+  id: number;
+  image: string;
+  category: string;
+  title: string;
+  author: string;
+  price: number;
+}
+
 function PopularCard({
+  id,
   image,
   category,
   title,
@@ -46,7 +63,7 @@ function PopularCard({
   price,
 }: CommunityCardProps) {
   return (
-    <Link to="#" className="group">
+    <Link to={`/community-details/${id}`} className="group">
       <div className="relative h-60 w-full overflow-hidden rounded-xl border bg-gray-100 mb-4">
         <img
           src={image}
@@ -62,17 +79,8 @@ function PopularCard({
         </div>
         <h3 className="font-bold text-lg group-hover:text-sky-600">{title}</h3>
         <p className="text-gray-500 text-sm">{author}</p>
-        <p className="text-sm mt-1">{price}</p>
+        <p className="text-sm mt-1">{price === 0 ? "Free" : `$${price}/month`}</p>
       </div>
     </Link>
   );
 }
-
-interface CommunityCardProps {
-  image: string;
-  category: string;
-  title: string;
-  author: string;
-  price: number;
-}
-

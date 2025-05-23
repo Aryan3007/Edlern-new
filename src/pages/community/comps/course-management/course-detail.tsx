@@ -169,11 +169,13 @@ export function CourseDetail({
   if (!isAdmin) {
     return (
       <YouTubeStyleView
-        course={courseData}
-        onBack={onBack}
-        selectedModule={selectedModule}
-        setSelectedModule={setSelectedModule}
-        selectedLesson={selectedLesson}
+        {...{
+          course: courseData,
+          onBack,
+          selectedModule,
+          setSelectedModule,
+          selectedLesson,
+        }}
         setSelectedLesson={setSelectedLesson}
         fetchModuleLessons={fetchModuleLessons}
         fetchLessonResources={fetchLessonResources}

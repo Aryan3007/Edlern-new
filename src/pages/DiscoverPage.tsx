@@ -12,9 +12,42 @@ import Footer from "@/section/footer";
 import { useEffect, useState } from "react";
 import SearchModal from "@/components/SearchModal";
 
+interface Community {
+  id: number;
+  name: string;
+  cover_image: string | null;
+  community_logo: string | null;
+  description: string;
+  category: string | null;
+  creator_info: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  community_type: string;
+  is_free: boolean;
+  monthly_pricing: number;
+  yearly_pricing: number;
+  banner_image: string | null;
+}
+
+interface Creator {
+  id: string;
+  first_name: string;
+  last_name: string;
+  communities: { comunity_logo?: string }[];
+  profile_picture: string;
+  bio: string;
+}
+
 export default function DiscoverPage() {
   const [isOpen, setIsOpen] = useState(false);
-  const [communities, setCommunities] = useState({
+  const [communities, setCommunities] = useState<{
+    featured_communities: Community[];
+    trending_communities: Community[];
+    popular_communities: Community[];
+    best_creators: Creator[];
+  }>({
     featured_communities: [],
     trending_communities: [],
     popular_communities: [],
@@ -29,7 +62,6 @@ export default function DiscoverPage() {
       behavior: "smooth",
     });
 
-    // Fetch API data
     const fetchCommunities = async () => {
       try {
         const response = await fetch(
@@ -82,7 +114,6 @@ export default function DiscoverPage() {
               </div>
             </section>
 
-            {/* Featured Section Skeleton */}
             <section className="w-full py-12">
               <div className="container px-4 md:px-6">
                 <div className="flex items-center justify-between mb-8">
@@ -107,7 +138,6 @@ export default function DiscoverPage() {
               </div>
             </section>
 
-            {/* Trending Section Skeleton */}
             <section className="w-full py-12">
               <div className="container px-4 md:px-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
@@ -134,7 +164,6 @@ export default function DiscoverPage() {
               </div>
             </section>
 
-            {/* Learn Section Skeleton */}
             <section className="w-full py-12">
               <div className="container px-4 md:px-6">
                 <div className="flex items-center justify-between mb-8">
@@ -154,7 +183,6 @@ export default function DiscoverPage() {
               </div>
             </section>
 
-            {/* Popular Section Skeleton */}
             <section className="w-full py-12">
               <div className="container px-4 md:px-6">
                 <Skeleton className="h-8 w-40 mb-8" />

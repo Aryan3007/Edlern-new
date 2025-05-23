@@ -2,7 +2,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-// Predefined background colors to cycle through
 const bgColors = [
   "bg-blue-600",
   "bg-gray-200",
@@ -13,14 +12,11 @@ const bgColors = [
 ];
 
 interface Creator {
-  id: number;
-  communities?: { comunity_logo?: string }[];
-  first_name?: string;
-  last_name?: string;
-  image: string;
-  name: string;
-  role: string;
-  bgColor: string;
+  id: string; // Updated to match API
+  first_name: string;
+  last_name: string;
+  profile_picture: string | null; // Updated to match API
+  bio: string; // Updated to match API
 }
 
 interface LearnSectionProps {
@@ -84,12 +80,12 @@ export default function LearnSection({ creators }: LearnSectionProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {displayedCreators.map((creator, index) => (
             <ExpertCard
-              key={creator.id || `creator-${index}`} // Fallback ID
-              id={String(creator.id || `creator-${index}`)} // Convert to string
-              image={creator.communities?.[0]?.comunity_logo || "/placeholder.svg"} // Use community logo or placeholder
-              name={`${creator.first_name ?? ""} ${creator.last_name ?? ""}`}
-              role="Community Creator" // Fallback role
-              bgColor={bgColors[index % bgColors.length]} // Cycle through colors
+              key={creator.id} // Use creator.id from API
+              id={creator.id} // Use creator.id for routing
+              image={creator.profile_picture || "/placeholder.svg"} // Use profile_picture
+              name={`${creator.first_name} ${creator.last_name}`}
+              role="Community Creator"
+              bgColor={bgColors[index % bgColors.length]}
             />
           ))}
         </div>

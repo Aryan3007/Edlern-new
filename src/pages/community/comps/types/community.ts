@@ -17,6 +17,7 @@ export interface Comment {
   author: string
   author_id: string
   author_first_name: string
+  author_profile_picture: string
   author_last_name: string
   content: string
   parent: number | null
@@ -42,7 +43,6 @@ export interface Post {
   attachments: string[]
   youtube_links: string[]
   links: string[]
-  poll: any | null
   created_at: string
   is_pinned: boolean
   comments: Comment[]
@@ -51,6 +51,8 @@ export interface Post {
   video_file: string | null
   is_liked_by_me: boolean
   community_id?: number
+  video_url?: string
+  thumbnail_url?: string
 }
 
 export interface ApiResponse {

@@ -4,28 +4,24 @@ import { Link } from "react-router-dom";
 
 interface Community {
   id: number;
-  logo: string;
-  logoText: string;
-  image: string;
-  title: string;
-  author: string;
-  price: number;
-  bgColor: string;
+  name: string;
+  banner_image: string | null; // Updated to match API
+  community_logo: string | null;
+  description: string;
+  category: string | null;
+  creator_info: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  community_type: string;
+  is_free: boolean;
+  monthly_pricing: number;
+  yearly_pricing: number;
 }
 
 interface FeaturedSectionProps {
   communities: Community[];
-}
-
-interface CommunityCardProps {
-  id: number;
-  logo: string;
-  logoText: string;
-  image: string;
-  title: string;
-  author: string;
-  price: number;
-  bgColor: string;
 }
 
 export default function FeaturedSection({ communities }: FeaturedSectionProps) {
@@ -92,19 +88,30 @@ export default function FeaturedSection({ communities }: FeaturedSectionProps) {
             <FeaturedCard
               key={community.id}
               id={community.id}
-              logo={community.logo}
-              logoText={community.logoText}
-              image={community.image}
-              title={community.title}
-              author={community.author}
-              price={community.price}
-              bgColor={community.bgColor}
+              logo={community.community_logo || "/placeholder.svg"}
+              logoText={community.name}
+              image={community.banner_image || "/placeholder.svg"} // Updated to banner_image
+              title={community.name}
+              author={`${community.creator_info.first_name} ${community.creator_info.last_name}`}
+              price={community.is_free ? 0 : community.monthly_pricing}
+              bgColor="bg-blue-600"
             />
           ))}
         </div>
       </div>
     </section>
   );
+}
+
+interface CommunityCardProps {
+  id: number;
+  logo: string;
+  logoText: string;
+  image: string;
+  title: string;
+  author: string;
+  price: number;
+  bgColor: string;
 }
 
 function FeaturedCard({
@@ -125,7 +132,7 @@ function FeaturedCard({
       <div className={`relative h-80 w-full overflow-hidden ${bgColor}`}>
         <div className="absolute top-4 left-4 z-10">
           <img
-            src={logo || "/placeholder.svg"}
+            src={logo}
             alt={logoText}
             width={100}
             height={50}
@@ -143,7 +150,7 @@ function FeaturedCard({
       <div className="p-4">
         <h3 className="font-bold text-lg">{title}</h3>
         <p className="text-gray-500 text-sm">{author}</p>
-        <p className="text-sm mt-1">{price}</p>
+        <p className="text-sm mt-1">{price === 0 ? "Free" : `$${price}/month`}</p>
       </div>
     </Link>
   );

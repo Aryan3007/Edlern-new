@@ -107,8 +107,8 @@ export default function CompanyAboutPage() {
         <section className="w-full py-12 md:py-16">
           <div className="container px-4 md:px-6">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-8">
-              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4 bg-white">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100">
+              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full ">
                   <Users className="h-6 w-6 text-sky-600" />
                 </div>
                 <div className="space-y-1 text-center">
@@ -116,8 +116,8 @@ export default function CompanyAboutPage() {
                   <p className="text-sm text-gray-500">Active Members</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4 bg-white">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100">
+              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full">
                   <Globe className="h-6 w-6 text-sky-600" />
                 </div>
                 <div className="space-y-1 text-center">
@@ -125,8 +125,8 @@ export default function CompanyAboutPage() {
                   <p className="text-sm text-gray-500">Communities</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4 bg-white">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100">
+              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full">
                   <Award className="h-6 w-6 text-sky-600" />
                 </div>
                 <div className="space-y-1 text-center">
@@ -134,8 +134,8 @@ export default function CompanyAboutPage() {
                   <p className="text-sm text-gray-500">Expert Creators</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4 bg-white">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100">
+              <div className="flex flex-col items-center justify-center space-y-2 border rounded-xl p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full ">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"

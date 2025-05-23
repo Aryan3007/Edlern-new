@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input"
 
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { 
- 
+import {
+
   Image as ImageIcon,
-  Link as LinkIcon, 
-  Youtube, 
-  X, 
-  Plus, 
+  Link as LinkIcon,
+  Youtube,
+  X,
+  Plus,
   Loader2,
 
 
@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner"
 import { RootState } from "@/store/store"
 import { useSelector } from "react-redux"
+import { SERVER_URL } from "@/config/config"
 
 
 interface Link {
@@ -38,47 +39,63 @@ interface Attachment {
   preview: string;
 }
 
-export function PostCreationDialog({communityId}: {communityId: string}) {
+// interface Post {
+//   id: number;
+//   community_id: string;
+//   content: string;
+//   attachments: Attachment[];
+//   links: Link[];
+//   youtube_links: YoutubeLink[];
+//   video_url: string | null;
+//   total_likes: number;
+//   is_liked_by_me: boolean;
+// }
+
+export function PostCreationDialog({ communityId }: { communityId: string }) {
   const accessToken = useSelector((state: RootState) => state.auth.accessToken)
 
   // Form state
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postContent, setPostContent] = useState("");
-  
+
   // Media state
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  
+
   // Links state
   const [links, setLinks] = useState<Link[]>([]);
   const [youtubeLinks, setYoutubeLinks] = useState<YoutubeLink[]>([]);
-  
+
   // UI States
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+
+  // Video state
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
 
   // Handlers for media uploads
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    const newAttachments: Attachment[] = [];
-    
     Array.from(files).forEach(file => {
-      // Check file type and size
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit example
-        toast.error("File too large", {
-          description: `${file.name} exceeds the 5MB size limit.`,
-        });
-        return;
+      if (file.type.startsWith('video/')) {
+        handleVideoUpload(file);
+      } else {
+        // existing image/file logic
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("File too large", {
+            description: `${file.name} exceeds the 5MB size limit.`,
+          });
+          return;
+        }
+        const filePreview = URL.createObjectURL(file);
+        setAttachments(prev => [...prev, { file, preview: filePreview }]);
       }
-      
-      const filePreview = URL.createObjectURL(file);
-      newAttachments.push({ file, preview: filePreview });
     });
-    
-    setAttachments([...attachments, ...newAttachments]);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -92,7 +109,7 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
   const handleAddLink = () => {
     setLinks([...links, { url: "" }]);
   };
-  
+
   const handleLinkChange = (index: number, url: string) => {
     const newLinks = [...links];
     newLinks[index] = { url };
@@ -103,7 +120,7 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
     const newLinks = [...links];
     newLinks.splice(index, 1);
     setLinks(newLinks);
-    
+
     if (newLinks.length === 0) {
       setShowLinkInput(false);
     }
@@ -124,13 +141,13 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
     const newYoutubeLinks = [...youtubeLinks];
     newYoutubeLinks.splice(index, 1);
     setYoutubeLinks(newYoutubeLinks);
-    
+
     if (newYoutubeLinks.length === 0) {
       setShowYoutubeInput(false);
     }
   };
 
- 
+
 
   const toggleLinkInput = () => {
     if (!showLinkInput) {
@@ -165,34 +182,36 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
 
 
     setIsSubmitting(true);
-    
+
     try {
       const formData = new FormData();
-      
+
       // Add content
       formData.append('content', postContent);
-      
+
       // Add attachments
       attachments.forEach(attachment => {
         formData.append('attachments', attachment.file);
       });
-      
+
       // Add links if any
       const validLinks = links.filter(link => link.url.trim() !== "");
       if (validLinks.length > 0) {
         formData.append('links', JSON.stringify(validLinks.map(link => link.url)));
       }
-      
+
       // Add YouTube links if any
       const validYoutubeLinks = youtubeLinks.filter(link => link.url.trim() !== "");
       if (validYoutubeLinks.length > 0) {
         formData.append('youtube_links', JSON.stringify(validYoutubeLinks.map(link => link.url)));
       }
-  
-    
+
+      if (videoUrl) {
+        formData.append('video_url', videoUrl);
+      }
 
       // API call
-      const response = await fetch(`https://edlern.weepul.in.net/api/v1/community/${communityId}/feed/posts/`, {
+      const response = await fetch(`${SERVER_URL}/api/v1/community/${communityId}/feed/posts/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -231,11 +250,69 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
     setAttachments([]);
     setLinks([]);
     setYoutubeLinks([]);
-    
-    
+
+
     setShowLinkInput(false);
     setShowYoutubeInput(false);
   };
+
+  const handleVideoUpload = async (file: File) => {
+    setVideoUploading(true);
+    try {
+      // 1. Get S3 upload fields from your backend
+      const response = await fetch(`${SERVER_URL}/api/v1/common/generate-s3-upload-url/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          file_name: file.name,
+          content_type: 'mp4',
+          key: `community_${communityId}/videos/${file.name}`
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        toast.error("Failed to get upload URL");
+        setVideoUploading(false);
+        return;
+      }
+
+      const { url, fields } = result.data;
+
+      // 2. Upload to S3
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      formData.append('file', file);
+
+      const upload = await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!upload.ok) {
+        toast.error("Video upload failed.");
+        setVideoUploading(false);
+        return;
+      }
+
+      // 3. Get the video URL
+      // If your backend returns the full URL, use that. Otherwise, construct it:
+      // Example: https://your-bucket.s3.amazonaws.com/community_x/videos/filename.mp4
+      const generatedUrl = url + fields.key;
+      setVideoUrl(generatedUrl);
+      toast.success("Video uploaded!");
+    } catch (err) {
+      toast.error("Video upload failed.");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -250,7 +327,7 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
           </div>
         </div>
       </DialogTrigger>
-      
+
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Create Post</DialogTitle>
@@ -306,7 +383,12 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
           </div>
         )}
 
-      
+        {videoUrl && (
+          <div className="mt-3">
+            <video src={videoUrl} controls className="w-full max-h-[200px]" />
+          </div>
+        )}
+
         {/* Links input section */}
         {showLinkInput && (
           <div className="mt-3">
@@ -330,12 +412,12 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
                   </Button>
                 </div>
               ))}
-              
+
               {links.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs h-8 mt-2" 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 mt-2"
                   onClick={handleAddLink}
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -369,12 +451,12 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
                   </Button>
                 </div>
               ))}
-              
+
               {youtubeLinks.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs h-8 mt-2" 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 mt-2"
                   onClick={handleAddYoutubeLink}
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -386,7 +468,7 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
         )}
 
         <Separator className="my-4" />
-        
+
         {/* Option toolbar */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <TooltipProvider>
@@ -410,12 +492,12 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
                 <p>Add photos or videos</p>
               </TooltipContent>
             </Tooltip>
-            
+
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-9 w-9 p-0"
                   onClick={toggleLinkInput}
                 >
@@ -426,12 +508,12 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
                 <p>Add link</p>
               </TooltipContent>
             </Tooltip>
-            
+
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-9 w-9 p-0"
                   onClick={toggleYoutubeInput}
                 >
@@ -442,8 +524,8 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
                 <p>Add YouTube video</p>
               </TooltipContent>
             </Tooltip>
-            
-           
+
+
           </TooltipProvider>
         </div>
 
@@ -462,13 +544,13 @@ export function PostCreationDialog({communityId}: {communityId: string}) {
           }}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting}
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || videoUploading}
             className="gap-2 px-6"
           >
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isSubmitting ? "Posting..." : "Post"}
+            {(isSubmitting || videoUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSubmitting ? "Posting..." : videoUploading ? "Uploading Video..." : "Post"}
           </Button>
         </div>
       </DialogContent>

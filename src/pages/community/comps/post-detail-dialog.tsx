@@ -49,12 +49,8 @@ export function PostDetailDialog({
   const accessToken = useSelector((state: RootState) => state.auth.accessToken)
   const currentUserId = useSelector((state: RootState) => (state.auth.user as User | null)?.id)
   const [imageIndices, setImageIndices] = useState<Map<number, number>>(new Map())
-  const [isPostLiked, setIsPostLiked] = useState(
-    selectedPost ? selectedPost.is_liked_by_me || false : false
-  )
-  const [postLikeCount, setPostLikeCount] = useState(
-    selectedPost ? selectedPost.total_likes || 0 : 0
-  )
+  const [isPostLiked, setIsPostLiked] = useState(false)
+  const [postLikeCount, setPostLikeCount] = useState(0)
   const [isPostLiking, setIsPostLiking] = useState(false)
   const [commentLikes, setCommentLikes] = useState<{
     [key: number]: { isLiked: boolean; totalLikes: number; isLiking?: boolean }
@@ -64,21 +60,22 @@ export function PostDetailDialog({
   const [isEditingComment, setIsEditingComment] = useState(false)
   const [commentError, setCommentError] = useState<string | null>(propCommentError)
 
-  if (!selectedPost) return null
-
-  // Initialize comment likes state
+  // Initialize states when selectedPost changes
   useEffect(() => {
-    if (selectedPost?.comments) {
+    if (selectedPost) {
       setIsPostLiked(selectedPost.is_liked_by_me || false)
       setPostLikeCount(selectedPost.total_likes || 0)
-      const initialLikes = selectedPost.comments.reduce(
-        (acc, comment) => {
-          acc[comment.id] = { isLiked: comment.is_liked || false, totalLikes: comment.total_likes || 0 }
-          return acc
-        },
-        {} as { [key: number]: { isLiked: boolean; totalLikes: number } },
-      )
-      setCommentLikes(initialLikes)
+
+      if (selectedPost.comments) {
+        const initialLikes = selectedPost.comments.reduce(
+          (acc, comment) => {
+            acc[comment.id] = { isLiked: comment.is_liked || false, totalLikes: comment.total_likes || 0 }
+            return acc
+          },
+          {} as { [key: number]: { isLiked: boolean; totalLikes: number } },
+        )
+        setCommentLikes(initialLikes)
+      }
     }
   }, [selectedPost])
 
@@ -284,34 +281,56 @@ export function PostDetailDialog({
         {post.content}
         {post.links?.length > 0 && (
           <div className="mt-3 space-y-2">
-            {post.links.map((link, index) => (
-              <div key={index} className="flex items-center gap-2 text-blue-600 hover:underline">
-                <LinkIcon className="h-4 w-4" />
-                <a href={link} target="_blank" rel="noopener noreferrer" className="truncate">
-                  {link}
-                </a>
-              </div>
-            ))}
-          </div>
-        )}
-        {post.youtube_links?.length > 0 && (
-          <div className="mt-3 space-y-3">
-            {post.youtube_links.map((link, index) => (
-              <div key={index} className="aspect-video rounded-md overflow-hidden">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={link.replace("watch?v=", "embed/")}
-                  title={`YouTube video ${index + 1}`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            ))}
-          </div>
-        )}
+            {post.links.map((link, index) => {
+              // Check if it's a YouTube link
+              if (link.includes('youtube.com') || link.includes('youtu.be')) {
+                const videoId = link.includes('youtube.com')
+                  ? link.split('v=')[1]?.split('&')[0]
+                  : link.split('youtu.be/')[1];
 
+                if (videoId) {
+                  return (
+                    <div key={index} className="aspect-video rounded-md overflow-hidden">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title={`YouTube video ${index + 1}`}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  );
+                }
+              }
+
+              // Regular link
+              return (
+                <div key={index} className="flex items-center gap-2 text-blue-600 hover:underline">
+                  <LinkIcon className="h-4 w-4" />
+                  <a href={link} target="_blank" rel="noopener noreferrer" className="truncate">
+                    {link}
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {post.video_url && (
+          <div className="mt-3">
+            <div className="aspect-video rounded-md overflow-hidden">
+              <video
+                controls
+                className="w-full h-full"
+                src={post.video_url}
+                poster={post.thumbnail_url}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        )}
       </div>
     )
   }, [])
@@ -363,6 +382,8 @@ export function PostDetailDialog({
       </div>
     )
   }
+
+  if (!selectedPost) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

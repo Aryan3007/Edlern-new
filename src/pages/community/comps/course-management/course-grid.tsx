@@ -55,6 +55,7 @@ export function CourseGrid({ userRole, communityId, onViewCourse }: CourseGridPr
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [filterCategory, setFilterCategory] = useState<string>("all")
   const isAdmin = userRole === "creator"
+ 
 
   // Headers with Bearer token
   const getAuthHeaders = (isFormData = false) => {
@@ -145,7 +146,7 @@ export function CourseGrid({ userRole, communityId, onViewCourse }: CourseGridPr
       setError("No access token available. Please log in.")
       return false
     }
-  
+
     setLoading(true)
     try {
       const response = await fetch(`${SERVER_URL}/api/v1/classroom/community/${communityId}/courses/`, {
@@ -170,6 +171,8 @@ export function CourseGrid({ userRole, communityId, onViewCourse }: CourseGridPr
       setLoading(false)
     }
   }
+
+
 
   return (
     <div className="space-y-6">
@@ -302,8 +305,8 @@ export function CourseGrid({ userRole, communityId, onViewCourse }: CourseGridPr
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-gray-500">{course.progress}% Complete</span>
                         {course?.progress !== undefined && course?.progress > 0 && course?.progress < 100 && (
-  <span className="text-xs font-medium text-blue-600">In Progress</span>
-)}
+                          <span className="text-xs font-medium text-blue-600">In Progress</span>
+                        )}
                         {course.progress === 100 && (
                           <span className="text-xs font-medium text-green-600">Completed</span>
                         )}
@@ -321,21 +324,23 @@ export function CourseGrid({ userRole, communityId, onViewCourse }: CourseGridPr
                         <Pencil className="h-4 w-4 mr-1" />
                         Manage
                       </Button>
-                      <Button size="sm" className="flex-1">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Preview
-                      </Button>
+                      <Link className="w-full" to={`/${communityId}/community/classroom/${course.id}`}>
+                        <Button size="sm" className="flex-1">
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
+                        </Button>
+                      </Link>
                     </>
                   ) : (
                     <Link className="w-full" to={`/${communityId}/community/classroom/${course.id}`}>
-                    <Button
-                      className="w-full flex items-center justify-center gap-2"
-                      
+                      <Button
+                        className="w-full flex items-center justify-center gap-2"
+
                       >
                         Start Course
-{/* {course!.progress === 100 ? "Review" : course.progress > 0 ? "Continue" : "Start Course"}                 */}
-    </Button>
-                      </Link>
+                        {/* {course!.progress === 100 ? "Review" : course.progress > 0 ? "Continue" : "Start Course"}                 */}
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </CardFooter>

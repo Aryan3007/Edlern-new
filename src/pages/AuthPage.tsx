@@ -242,6 +242,7 @@ export default function AuthPage() {
         toast.success("Signup Successful", {
           description: data.message || "Please check your email for verification instructions.",
         })
+        navigate("/auth/check-verify-email")
         setActiveTab("login")
         setFormData({
           ...formData,
@@ -269,7 +270,7 @@ export default function AuthPage() {
   const handleGoogleAuth = async () => {
     setIsLoading(true)
     try {
-      const redirectUri = "http://localhost:5173/domain/api/v1/auth/google/login-callback";
+      const redirectUri = "http://localhost:5173";
       const response = await fetch(`${GOOGLE_AUTH_URL}?redirect=${(redirectUri)}`, {
         method: "GET",
         headers: {

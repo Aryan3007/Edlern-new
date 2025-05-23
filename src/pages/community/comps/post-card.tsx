@@ -5,8 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, MessageSquare, MoreHorizontal, Share2, Star, Maximize2, LinkIcon } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Heart, MessageSquare, Share2, Star } from "lucide-react"
 import axios from "axios"
 import { useSelector } from "react-redux"
 import type { RootState } from "@/store/store"
@@ -106,157 +105,110 @@ export function PostCard({
     300 // 300ms debounce
   )
 
-  // Render post content (unchanged)
-  const renderPostContent = useCallback((post: Post) => {
-    return (
-      <div className="whitespace-pre-line">
-        {post.content}
-        {post.links?.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {post.links.map((link, index) => (
-              <div key={index} className="flex items-center gap-2 text-blue-600 hover:underline">
-                <LinkIcon className="h-4 w-4" />
-                <a href={link} target="_blank" rel="noopener noreferrer" className="truncate">
-                  {link}
-                </a>
-              </div>
-            ))}
-          </div>
-        )}
-        {post.youtube_links?.length > 0 && (
-          <div className="mt-3 space-y-3">
-            {post.youtube_links.map((link, index) => (
-              <div key={index} className="aspect-video rounded-md overflow-hidden">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={link.replace("watch?v=", "embed/")}
-                  title={`YouTube video ${index + 1}`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }, [])
 
-  // Render image grid (unchanged)
-  const renderImageGrid = useCallback((attachments: string[]) => {
-    if (!attachments || attachments.length === 0) return null
-
-    const maxVisibleImages = 4
-    const remainingImages = attachments.length > maxVisibleImages ? attachments.length - maxVisibleImages : 0
-
-    return (
-      <div className="lg:max-w-64 w-full space-y-2">
-        <img
-          src={attachments[0] || "/placeholder.svg"}
-          alt="Media 1"
-          className="w-44 h-auto rounded-md object-cover"
-          loading="lazy"
-        />
-        {attachments.length > 1 && (
-          <div className="grid grid-cols-3 gap-2">
-            {attachments.slice(1, maxVisibleImages).map((url, index) => (
-              <div key={index} className="relative">
-                <img
-                  src={url || "/placeholder.svg"}
-                  alt={`Media ${index + 2}`}
-                  className="w-64 h-24 rounded-md object-cover"
-                  loading="lazy"
-                />
-                {index === maxVisibleImages - 2 && remainingImages > 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
-                    <span className="text-white font-semibold text-lg">+{remainingImages}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }, [])
 
   return (
-    <Card className="overflow-hidden p-0">
-      <CardHeader className="p-4 flex flex-row items-start gap-3">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src="/placeholder.svg" alt={post.author_name} />
-          <AvatarFallback>{getAuthorInitial(post.author_name)}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{post.author_name}</span>
-            {post.is_pinned && (
-              <Badge variant="outline" className="bg-amber-100 text-amber-700 h-5 px-1">
-                <Star className="h-3 w-3 mr-1 fill-amber-500 text-amber-500" />
-                <span className="text-xs">Pinned</span>
-              </Badge>
+    <Card onClick={() => openPostDetail(post)} className="overflow-hidden  p-0">
+      <div className="flex flex-row items-stretch">
+        {/* Left: Content */}
+        <div className="flex-1 flex flex-col justify-between p-4">
+          <CardHeader className="p-0 pb-2 flex flex-row items-start gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src="/placeholder.svg" alt={post.author_name} />
+              <AvatarFallback>{getAuthorInitial(post.author_name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{post.author_name}</span>
+                {post.is_pinned && (
+                  <Badge variant="outline" className="bg-amber-100 text-amber-700 h-5 px-1">
+                    <Star className="h-3 w-3 mr-1 fill-amber-500 text-amber-500" />
+                    <span className="text-xs">Pinned</span>
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">{formatRelativeTime(post.created_at)} · General discussion</p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 pt-2 flex flex-col gap-2">
+            {/* <div className="font-bold capitalize text-lg">{post.topic ? post.topic.replace(/_/g, ' ') : post.content?.split('\n')[0]}</div> */}
+            <div className="text-base">{post.content}</div>
+          </CardContent>
+          <CardFooter className="p-0 pt-4 flex gap-4">
+            <Button
+              size="sm"
+              className={`gap-1 ${isLiked ? "text-pink-600" : "text-gray-600"} hover:text-pink-600`}
+              onClick={handleLikePost}
+              disabled={isLiking}
+            >
+              <Heart className={`h-4 w-4 ${isLiked ? "fill-pink-600" : "fill-gray-600"}`} />
+              <span>{likeCount}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-gray-600 hover:text-sky-600"
+              onClick={() => openPostDetail(post)}
+              aria-label={`View ${post.total_comments} comments`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>{post.total_comments}</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-sky-600" aria-label="Share post">
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </CardFooter>
+        </div>
+        {/* Right: Media Preview */}
+        {(post.attachments?.length > 0 || post.video_url || (post.links && post.links.some(link => link.includes('youtube.com') || link.includes('youtu.be')))) && (
+          <div className="flex items-center justify-center min-w-[120px] max-w-[180px] p-4 cursor-pointer" >
+            {/* Show image if present */}
+            {post.attachments && post.attachments.length > 0 && (
+              <img
+                src={post.attachments[0] || "/placeholder.svg"}
+                alt="Media preview"
+                className="w-32 h-20 rounded-md object-cover"
+                loading="lazy"
+              />
+            )}
+            {/* Show video if present */}
+            {!post.attachments?.length && post.video_url && (
+              <video
+                src={post.video_url}
+                poster={post.thumbnail_url}
+                className="w-32 h-20 rounded-md object-cover"
+                controls={false}
+                onClick={e => { e.preventDefault(); openPostDetail(post); }}
+              />
+            )}
+            {/* Show YouTube if present and no image/video */}
+            {!post.attachments?.length && !post.video_url && post.links && post.links.some(link => link.includes('youtube.com') || link.includes('youtu.be')) && (
+              (() => {
+                const ytLink = post.links.find(link => link.includes('youtube.com') || link.includes('youtu.be'));
+                let videoId = ytLink?.includes('youtube.com')
+                  ? ytLink.split('v=')[1]?.split('&')[0]
+                  : ytLink?.split('youtu.be/')[1];
+                if (videoId) {
+                  return (
+                    <div className="w-32 h-20 rounded-md overflow-hidden aspect-video bg-black flex items-center justify-center">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title="YouTube video preview"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()
             )}
           </div>
-          <p className="text-sm text-gray-500">{formatRelativeTime(post.created_at)}</p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Pin post</DropdownMenuItem>
-            <DropdownMenuItem>Delete post</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => openPostDetail(post)}
-          aria-label="View post details"
-        >
-          <Maximize2 className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-      <CardContent className="p-4 flex flex-col lg:flex-row justify-between gap-4">
-        {renderPostContent(post)}
-        {post.attachments?.length > 0 && renderImageGrid(post.attachments)}
-      </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            className={`gap-1 ${isLiked ? "text-pink-600" : "text-gray-600"} hover:text-pink-600`}
-            onClick={handleLikePost}
-            disabled={isLiking || !accessToken}
-            aria-label={`${isLiked ? "Unlike" : "Like"} post with ${likeCount} likes`}
-          >
-            {isLiking ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent mr-1" />
-            ) : (
-              <Heart className={`h-4 w-4 ${isLiked ? "fill-pink-600" : ""}`} />
-            )}
-            <span>{likeCount}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1 text-gray-600 hover:text-sky-600"
-            onClick={() => openPostDetail(post)}
-            aria-label={`View ${post.total_comments} comments`}
-          >
-            <MessageSquare className="h-4 w-4" />
-            <span>{post.total_comments}</span>
-          </Button>
-        </div>
-        <Button variant="ghost" size="sm" className="text-gray-600 hover:text-sky-600" aria-label="Share post">
-          <Share2 className="h-4 w-4" />
-        </Button>
-      </CardFooter>
+        )}
+      </div>
     </Card>
   )
 }
