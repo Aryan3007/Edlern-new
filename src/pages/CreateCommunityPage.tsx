@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -132,7 +131,6 @@ export default function CreateCommunityPage() {
         const data: CategoriesResponse = await response.json()
         if (!data.success) {
           toast.error(data.message)
-
         }
         setCategories(data.data.results)
         setCategoriesError(null)
@@ -364,14 +362,9 @@ export default function CreateCommunityPage() {
       const data = await response.json()
       if (!data.success) {
         toast.error(data.message)
-
-      }
-      if (data.success) {
-        localStorage.removeItem("edlern_user_communities")
-        localStorage.removeItem("edlern_current_community")
       }
 
-      navigate(`/community-creation/successfull/${data.id}`)
+      navigate(`/community-creation/successfull/${data.data.id}`)
 
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to create community")
@@ -424,10 +417,10 @@ export default function CreateCommunityPage() {
                 <div key={item.number} className="flex items-center gap-3">
                   <motion.div
                     className={`flex items-center justify-center w-8 h-8 rounded-full ${step === item.number
-                        ? "bg-white text-sky-600"
-                        : step > item.number
-                          ? "bg-sky-400 text-white"
-                          : "bg-sky-800 text-white"
+                      ? "bg-white text-sky-600"
+                      : step > item.number
+                        ? "bg-sky-400 text-white"
+                        : "bg-sky-800 text-white"
                       } font-bold text-sm`}
                     whileHover={{ scale: 1.1 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}

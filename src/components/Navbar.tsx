@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -138,9 +137,6 @@ const resourcesFeatures = [
   },
 ]
 
-const CURRENT_COMMUNITY_KEY = "edlern_current_community"
-const USER_COMMUNITIES_KEY = "edlern_user_communities"
-
 const Navbar: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -169,47 +165,6 @@ const Navbar: React.FC = () => {
     }
   }, [scrolled])
 
-  const loadCommunitiesFromStorage = () => {
-    try {
-      const storedCommunitiesString = localStorage.getItem(USER_COMMUNITIES_KEY)
-      const storedCurrentCommunityString = localStorage.getItem(CURRENT_COMMUNITY_KEY)
-
-      if (storedCommunitiesString && storedCurrentCommunityString) {
-        const storedCommunities = JSON.parse(storedCommunitiesString) as Community[]
-        const storedCurrentCommunity = JSON.parse(storedCurrentCommunityString) as Community
-
-        if (storedCommunities.length > 0 && storedCurrentCommunity) {
-          const updatedCommunities = storedCommunities.map((comm) => ({
-            ...comm,
-            current:
-              comm.community_id === storedCurrentCommunity.community_id ||
-              comm.id === storedCurrentCommunity.id,
-          }))
-          setUserCommunities(updatedCommunities)
-          setCurrentCommunity(storedCurrentCommunity)
-          return true
-        }
-      }
-      return false
-    } catch (error) {
-      console.error("Error loading communities from localStorage:", error)
-      return false
-    }
-  }
-
-  const saveCommunitiesToStorage = (communities: Community[], current: Community | null) => {
-    try {
-      if (communities.length > 0) {
-        localStorage.setItem(USER_COMMUNITIES_KEY, JSON.stringify(communities))
-      }
-      if (current) {
-        localStorage.setItem(CURRENT_COMMUNITY_KEY, JSON.stringify(current))
-      }
-    } catch (error) {
-      console.error("Error saving communities to localStorage:", error)
-    }
-  }
-
   const getUserCommunities = async (accessToken: string) => {
     try {
       if (!accessToken) {
@@ -230,35 +185,17 @@ const Navbar: React.FC = () => {
       }
 
       const result = await response.json()
-      const storedCurrentCommunityString = localStorage.getItem(CURRENT_COMMUNITY_KEY)
-      let storedCurrentCommunityId: number | undefined
-
-      if (storedCurrentCommunityString) {
-        const storedCurrentCommunity = JSON.parse(storedCurrentCommunityString) as Community
-        storedCurrentCommunityId = storedCurrentCommunity.community_id || storedCurrentCommunity.id
-      }
-
-      const formattedCommunities = result.data.map((community: CommunityData, index: number) => {
-        const communityId = community.community_id
-        const isCurrent = storedCurrentCommunityId
-          ? communityId === storedCurrentCommunityId
-          : index === 0
-        return {
-          ...community,
-          id: community.community_id,
-          name: community.community_name,
-          image: community.community_logo,
-          current: isCurrent,
-        }
-      })
+      const formattedCommunities = result.data.map((community: CommunityData) => ({
+        ...community,
+        id: community.community_id,
+        name: community.community_name,
+        image: community.community_logo,
+        current: false,
+      }))
 
       setUserCommunities(formattedCommunities)
-      const newCurrentCommunity = formattedCommunities.find((c: Community) => c.current) || formattedCommunities[0]
-      if (newCurrentCommunity) {
-        setCurrentCommunity(newCurrentCommunity)
-        saveCommunitiesToStorage(formattedCommunities, newCurrentCommunity)
-      } else {
-        console.warn("No communities found")
+      if (formattedCommunities.length > 0) {
+        setCurrentCommunity(formattedCommunities[0])
       }
 
       return formattedCommunities
@@ -280,7 +217,6 @@ const Navbar: React.FC = () => {
       ]
       setUserCommunities(defaultCommunities)
       setCurrentCommunity(defaultCommunities[0])
-      saveCommunitiesToStorage(defaultCommunities, defaultCommunities[0])
       return defaultCommunities
     } finally {
       setLoading(false)
@@ -294,7 +230,6 @@ const Navbar: React.FC = () => {
     }))
     setUserCommunities(updatedCommunities)
     setCurrentCommunity(community)
-    saveCommunitiesToStorage(updatedCommunities, community)
     const communityId = community.community_id || community.id
     navigate(`/${communityId}/community/feed`)
     setActiveDropdown(null)
@@ -304,11 +239,6 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const initializeCommunities = async () => {
       setLoading(true)
-      const hasStoredData = loadCommunitiesFromStorage()
-      if (hasStoredData) {
-        setLoading(false)
-        return
-      }
       if (accessToken) {
         await getUserCommunities(accessToken)
       } else {
@@ -328,7 +258,6 @@ const Navbar: React.FC = () => {
         ]
         setUserCommunities(defaultCommunities)
         setCurrentCommunity(defaultCommunities[0])
-        saveCommunitiesToStorage(defaultCommunities, defaultCommunities[0])
       }
       setLoading(false)
     }

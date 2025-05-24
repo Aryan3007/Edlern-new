@@ -435,8 +435,8 @@ export default function Header() {
               <DropdownMenuSeparator />
               <Link to={"/"} >
                 <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Exit Community</span>
+                  <LogOut className=" h-4 w-4" />
+                  <span>Go To Home</span>
                 </DropdownMenuItem>
               </Link>
             </DropdownMenuContent>
