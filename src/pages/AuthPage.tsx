@@ -57,7 +57,7 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const dispatch = useDispatch()
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated)
-  
+
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/");
@@ -198,6 +198,24 @@ export default function AuthPage() {
 
       if (response.ok && data.success) {
         dispatch(loginSuccess(data.data))
+
+        // Establish WebSocket connection
+        const ws = new WebSocket(`wss://edlern.toolsfactory.tech/ws/chats/user-online-status/${data.data.user.id}/`)
+
+        ws.onopen = () => {
+          console.log('WebSocket connection established')
+          // Send user ID to establish connection
+          ws.send(JSON.stringify({ user_id: data.data.user.id }))
+        }
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error)
+        }
+
+        ws.onclose = () => {
+          console.log('WebSocket connection closed')
+        }
+
         toast.success("Login Successful", {
           description: "You have successfully logged in. Redirecting to the dashboard...",
         })

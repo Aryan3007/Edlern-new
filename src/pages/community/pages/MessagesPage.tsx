@@ -1,218 +1,395 @@
-import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Search, Send, MoreHorizontal, ChevronLeft, Paperclip, Smile } from "lucide-react"
-import { Textarea } from "@/components/ui/textarea"
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Search, Send, MoreHorizontal, ChevronLeft, Smile } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+
+// Interfaces for chat data
+interface MemberData {
+  name: string;
+  user_id: string;
+  member_id: number;
+  is_admin: boolean;
+}
+
+interface APIChatRoom {
+  id: number;
+  members_data: MemberData[];
+  created_at: string;
+  updated_at: string;
+  is_group: boolean;
+  title: string;
+  community: number;
+}
+
+interface Conversation {
+  id: number;
+  name: string;
+  image: string;
+  lastMessage: string;
+  time: string;
+  unread: boolean;
+  active: boolean;
+  otherMemberId: number;
+}
+
+interface Message {
+  id: number;
+  sender: "me" | "them";
+  text: string;
+  time: string;
+}
+
+interface APIMessage {
+  id: number;
+  sender_name: string;
+  receiver_name: string;
+  created_at: string;
+  updated_at: string;
+  content: string;
+  is_read: boolean;
+  room: number;
+  sender: number;
+}
+
+// WebSocket message interface
+interface WebSocketMessage {
+  type: string;
+  message: {
+    id: number;
+    sender_name: string;
+    receiver_name: string;
+    created_at: string;
+    updated_at: string;
+    content: string;
+    is_read: boolean;
+    room: number;
+    sender: number;
+  };
+}
 
 export default function MessagesPage() {
-  // Sample conversation data
-  const initialConversations = [
-    {
-      id: 1,
-      name: "Hamza Ahmed",
-      image: "/placeholder.svg?height=40&width=40&text=HA",
-      lastMessage: "Hey, check out this new workout routine I just posted!",
-      time: "2m ago",
-      unread: true,
-      active: true,
-    },
-    {
-      id: 2,
-      name: "Samual Benson",
-      image: "/placeholder.svg?height=40&width=40&text=SB",
-      lastMessage: "Thanks for the advice on that investment strategy.",
-      time: "1h ago",
-      unread: true,
-      active: false,
-    },
-    {
-      id: 3,
-      name: "Latif Skool",
-      image: "/placeholder.svg?height=40&width=40&text=LS",
-      lastMessage: "I'll be posting a new video tomorrow about mindset.",
-      time: "3h ago",
-      unread: false,
-      active: false,
-    },
-    {
-      id: 4,
-      name: "Andrew Heydt",
-      image: "/placeholder.svg?height=40&width=40&text=AH",
-      lastMessage: "Let me know when you're free to discuss the project.",
-      time: "1d ago",
-      unread: false,
-      active: false,
-    },
-    {
-      id: 5,
-      name: "Brad Cassidy",
-      image: "/placeholder.svg?height=40&width=40&text=BC",
-      lastMessage: "Did you see the latest post about nutrition?",
-      time: "2d ago",
-      unread: false,
-      active: false,
-    },
-    {
-      id: 6,
-      name: "Self Improvement Group",
-      image: "/placeholder.svg?height=40&width=40&text=SIG",
-      lastMessage: "Joel: I found this great book on productivity",
-      time: "3d ago",
-      unread: false,
-      isGroup: true,
-      active: false,
-    },
-  ]
+  const { community_id } = useParams<{ community_id: string }>();
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const location = useLocation();
+  const userId = "1dc6b82a-ab24-4e52-ab55-7ecebf987cc2"; // Extracted from JWT token; ideally, get this from auth state
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Record<number, Message[]>>({});
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showMobileChat, setShowMobileChat] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [ws, setWs] = useState<WebSocket | null>(null);
 
-  const initialMessages = {
-    1: [
-      { id: 1, sender: "them", text: "Hey, how's it going?", time: "10:30 AM" },
-      { id: 2, sender: "me", text: "Pretty good! Just finished my workout.", time: "10:32 AM" },
-      { id: 3, sender: "them", text: "Nice! What did you train today?", time: "10:33 AM" },
-      {
-        id: 4,
-        sender: "me",
-        text: "Chest and triceps. Going for that aesthetic physique!",
-        time: "10:35 AM",
-      },
-      {
-        id: 5,
-        sender: "them",
-        text: "That's awesome! Check out this new workout routine I just posted. I think you'll find it really effective for building mass.",
-        time: "10:36 AM",
-      },
-      {
-        id: 6,
-        sender: "them",
-        text: "It's based on progressive overload with a focus on compound movements.",
-        time: "10:36 AM",
-      },
-      { id: 7, sender: "me", text: "Sounds interesting! I'll definitely take a look.", time: "10:38 AM" },
-      {
-        id: 8,
-        sender: "them",
-        text: "Great! Let me know what you think after you try it.",
-        time: "10:40 AM",
-      },
-      { id: 9, sender: "me", text: "Will do. Thanks for sharing!", time: "10:41 AM" },
-    ],
-    2: [
-      { id: 1, sender: "me", text: "Hey Sam, what do you think about that tech stock we discussed?", time: "9:20 AM" },
-      { id: 2, sender: "them", text: "I actually bought some shares yesterday!", time: "9:25 AM" },
-      { id: 3, sender: "me", text: "Great call! How much did you invest?", time: "9:26 AM" },
-      { id: 4, sender: "them", text: "Just a small position to start. Thanks for the advice on that investment strategy.", time: "9:30 AM" },
-    ],
-    3: [
-      { id: 1, sender: "them", text: "Have you seen my latest video on morning routines?", time: "Yesterday" },
-      { id: 2, sender: "me", text: "Not yet, but I'll check it out tonight", time: "Yesterday" },
-      { id: 3, sender: "them", text: "I'll be posting a new video tomorrow about mindset.", time: "3h ago" },
-    ]
-  }
-  
-  // State management
-  const [conversations, setConversations] = useState(initialConversations)
-  const [selectedConversation, setSelectedConversation] = useState(conversations[0])
-  const [messages, setMessages] = useState<Record<number, { id: number; sender: string; text: string; time: string; }[]>>(initialMessages)
-  const [newMessage, setNewMessage] = useState("")
-  const [showMobileChat, setShowMobileChat] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Extract navigation state
+  const { roomId, memberId, memberName } = (location.state as { roomId?: number; memberId?: number; memberName?: string }) || {};
 
-  // Scroll to bottom of messages when they change
+  // Fetch all chat rooms
+  const fetchChatRooms = useCallback(async () => {
+    if (!community_id || !accessToken) {
+      setError("Missing community ID or authentication token");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `https://edlern.toolsfactory.tech/api/v1/chats/community/${community_id}/member-chat/my-chat-rooms/`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data: { message: string; success: boolean; data: { results: APIChatRoom[] } } = await response.json();
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      const fetchedConversations: Conversation[] = data.data.results.map((room) => {
+        // Find the other member (not the current user)
+        const otherMember = room.members_data.find(member => member.user_id !== userId);
+
+        return {
+          id: room.id,
+          name: otherMember?.name || "Unknown User",
+          image: `/placeholder.svg?height=40&width=40&text=${otherMember?.name?.charAt(0) || "U"}`,
+          lastMessage: "No messages yet", // This should be updated with actual last message
+          time: new Date(room.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          unread: false,
+          active: room.id === roomId,
+          otherMemberId: otherMember?.member_id || 0,
+        };
+      });
+
+      setConversations(fetchedConversations);
+      // If navigated from MembersPage, select the conversation
+      if (roomId && memberId && memberName) {
+        const targetConversation = fetchedConversations.find((conv) => conv.id === roomId);
+        if (targetConversation) {
+          setSelectedConversation(targetConversation);
+          setShowMobileChat(true);
+        } else {
+          // Fallback: Create a temporary conversation if not found
+          setSelectedConversation({
+            id: roomId,
+            name: memberName,
+            image: `/placeholder.svg?height=40&width=40&text=${memberName.charAt(0)}`,
+            lastMessage: "No messages yet",
+            time: "N/A",
+            unread: false,
+            active: true,
+            otherMemberId: memberId,
+          });
+        }
+      }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch chat rooms");
+    } finally {
+      setLoading(false);
+    }
+  }, [community_id, accessToken, roomId, memberId, memberName, userId]);
+
+  // Fetch messages for the selected conversation
+  const fetchMessages = useCallback(async (roomId: number) => {
+    if (!community_id || !accessToken) {
+      setError("Missing community ID or authentication token");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://edlern.toolsfactory.tech/api/v1/chats/community/${community_id}/member-chat/room/${roomId}/chat/`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data: { message: string; success: boolean; data: { results: APIMessage[] } } = await response.json();
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      const fetchedMessages: Message[] = data.data.results.map((msg) => ({
+        id: msg.id,
+        sender: msg.sender === parseInt(userId, 10) ? "me" : "them",
+        text: msg.content,
+        time: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      }));
+
+      setMessages((prev) => ({
+        ...prev,
+        [roomId]: fetchedMessages,
+      }));
+
+      // Update the last message in conversations
+      if (fetchedMessages.length > 0) {
+        const lastMessage = fetchedMessages[0];
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === roomId
+              ? {
+                ...conv,
+                lastMessage: lastMessage.text,
+                time: lastMessage.time,
+              }
+              : conv
+          )
+        );
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch messages");
+    }
+  }, [community_id, accessToken, userId]);
+
+  // Initialize WebSocket connection
+  const initializeWebSocket = useCallback((roomId: number) => {
+    if (!community_id || !accessToken) return;
+
+    const wsUrl = `wss://edlern.toolsfactory.tech/ws/chats/community/community-member-chat/?token=${accessToken}&community_id=${community_id}&room_id=${roomId}`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data: WebSocketMessage = JSON.parse(event.data);
+        if (data.type === 'chat_message' && data.message) {
+          const newMessage: Message = {
+            id: data.message.id,
+            sender: data.message.sender === parseInt(userId, 10) ? "me" : "them",
+            text: data.message.content,
+            time: new Date(data.message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          };
+
+          // Update messages
+          setMessages((prev) => ({
+            ...prev,
+            [roomId]: [...(prev[roomId] || []), newMessage],
+          }));
+
+          // Update conversation last message
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === roomId
+                ? {
+                  ...conv,
+                  lastMessage: newMessage.text,
+                  time: newMessage.time,
+                }
+                : conv
+            )
+          );
+
+          // Scroll to bottom
+          setTimeout(scrollToBottom, 100);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    setWs(socket);
+
+    return () => {
+      socket.close();
+    };
+  }, [community_id, accessToken, userId]);
+
+  // Cleanup WebSocket on unmount
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, selectedConversation, showMobileChat])
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [ws]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  // Initialize WebSocket when selecting a conversation
+  useEffect(() => {
+    if (selectedConversation) {
+      // Close existing connection if any
+      if (ws) {
+        ws.close();
+      }
+      // Initialize new connection
+      initializeWebSocket(selectedConversation.id);
+    }
+  }, [selectedConversation, initializeWebSocket]);
+
+  // Update handleSendMessage to use WebSocket
+// Update handleSendMessage to use WebSocket
+const handleSendMessage = () => {
+  if (!newMessage.trim() || !selectedConversation || !ws) return;
+
+  try {
+    // Send message through WebSocket in the specified format
+    const messagePayload = {
+      message: newMessage.trim(),
+    };
+    ws.send(JSON.stringify(messagePayload));
+
+    // Clear input after sending
+    setNewMessage("");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to send message");
   }
+};
 
   // Select a conversation
-  interface Conversation {
-    id: number;
-    name: string;
-    image: string;
-    lastMessage: string;
-    time: string;
-    unread: boolean;
-    active: boolean;
-    isGroup?: boolean;
-  }
-
-
-
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
-    
-    // Update conversations to mark selected as active and no longer unread
-    setConversations(conversations.map((conv: Conversation) => ({
-      ...conv,
-      active: conv.id === conversation.id,
-      unread: conv.id === conversation.id ? false : conv.unread
-    })));
-    
+    setConversations((prev) =>
+      prev.map((conv) => ({
+        ...conv,
+        active: conv.id === conversation.id,
+        unread: conv.id === conversation.id ? false : conv.unread,
+      }))
+    );
     setShowMobileChat(true);
-    
-    // Small delay to ensure scrolling after component update
+    fetchMessages(conversation.id);
     setTimeout(scrollToBottom, 100);
   };
 
-  // Send a new message
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    const newMessageObj = {
-      id: messages[selectedConversation.id]?.length + 1 || 1,
-      sender: "me",
-      text: newMessage.trim(),
-      time: currentTime
-    }
-
-    // Add message to the selected conversation's messages
-    setMessages({
-      ...messages,
-      [selectedConversation.id]: [...(messages[selectedConversation.id] || []), newMessageObj]
-    })
-
-    // Update last message in conversations list
-    setConversations(conversations.map(conv => 
-      conv.id === selectedConversation.id 
-        ? { ...conv, lastMessage: newMessage.trim(), time: "Just now" } 
-        : conv
-    ))
-
-    // Clear input
-    setNewMessage("")
-  }
+  // Auto-resize textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    e.target.style.height = "auto";
+    const newHeight = Math.min(e.target.scrollHeight, 120);
+    e.target.style.height = `${newHeight}px`;
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
-  }
+  };
 
-  // Auto-resize textarea based on content
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-    setNewMessage(e.target.value)
-    
-    // Reset height to auto to get the correct scrollHeight
-    e.target.style.height = 'auto'
-    
-    // Set the height to the scrollHeight, but cap it at a reasonable max
-    const newHeight = Math.min(e.target.scrollHeight, 120)
-    e.target.style.height = `${newHeight}px`
-  }
+  // Fetch chat rooms on mount
+  useEffect(() => {
+    fetchChatRooms();
+  }, [fetchChatRooms]);
+
+  // Fetch messages when selectedConversation changes
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+    }
+  }, [selectedConversation, fetchMessages]);
+
+  // Scroll to bottom when messages or selected conversation changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, selectedConversation, showMobileChat]);
 
   return (
     <div className="container select-none w-full lg:w-7xl mx-auto py-0">
       <Card className="h-[calc(100svh-80px)] max-w-7xl mx-auto p-0 flex flex-col overflow-hidden">
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 h-full overflow-hidden">
-          {/* Conversations List - Hidden on mobile when chat is open */}
-          <div className={`border-r overflow-hidden flex flex-col ${showMobileChat ? 'hidden md:flex' : 'flex'}`}>
+          {/* Conversations List */}
+          <div className={`border-r overflow-hidden flex flex-col ${showMobileChat ? "hidden md:flex" : "flex"}`}>
             <CardHeader className="px-4 py-3 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Messages</CardTitle>
@@ -226,159 +403,140 @@ export default function MessagesPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              {/* <Tabs defaultValue="all" className="w-full flex-shrink-0">
-                <TabsList className="grid w-full grid-cols-3 px-4 py-2">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="unread">Unread</TabsTrigger>
-                  <TabsTrigger value="groups">Groups</TabsTrigger>
-                </TabsList>
-              </Tabs> */}
-
               <div className="flex-1 overflow-y-auto">
-                {conversations.map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    className={`flex items-start gap-3 p-4  cursor-pointer ${
-                      conversation.active ? "bg-sky-600/5 border-l-4 border-sky-600" : ""
-                    }`}
-                    onClick={() => handleSelectConversation(conversation)}
-                  >
-                    <div className="relative">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={conversation.image || "/placeholder.svg"} alt={conversation.name} />
-                        <AvatarFallback>{conversation.name.substring(0, 2)}</AvatarFallback>
-                      </Avatar>
-                      {conversation.isGroup ? (
-                        <Badge className="absolute -bottom-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-gray-500">
-                          <span className="text-[8px]">G</span>
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className={`font-medium ${conversation.unread ? "text-gray-600" : "text-gray-700"}`}>
-                          {conversation.name}
-                        </span>
-                        <span className="text-xs text-gray-500">{conversation.time}</span>
+                {loading ? (
+                  <div className="text-center py-6">Loading conversations...</div>
+                ) : error ? (
+                  <div className="text-center py-6 text-red-600">{error}</div>
+                ) : conversations.length === 0 ? (
+                  <div className="text-center py-6">No conversations found</div>
+                ) : (
+                  conversations.map((conversation) => (
+                    <div
+                      key={conversation.id}
+                      className={`flex items-start gap-3 p-4 cursor-pointer ${conversation.active ? "bg-sky-600/5 border-l-4 border-sky-600" : ""
+                        }`}
+                      onClick={() => handleSelectConversation(conversation)}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={conversation.image} alt={conversation.name} />
+                          <AvatarFallback>{conversation.name.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
                       </div>
-                      <p
-                        className={`text-sm truncate ${conversation.unread ? "font-medium text-gray-400" : "text-gray-500"}`}
-                      >
-                        {conversation.lastMessage}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`font-medium ${conversation.unread ? "text-gray-600" : "text-gray-700"}`}>
+                            {conversation.name}
+                          </span>
+                          <span className="text-xs text-gray-500">{conversation.time}</span>
+                        </div>
+                        <p
+                          className={`text-sm truncate ${conversation.unread ? "font-medium text-gray-400" : "text-gray-500"}`}
+                        >
+                          {conversation.lastMessage}
+                        </p>
+                      </div>
+                      {conversation.unread && <Badge className="h-2 w-2 rounded-full p-0 bg-lime-600" />}
                     </div>
-                    {conversation.unread && <Badge className="h-2 w-2 rounded-full p-0 bg-lime-600" />}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </div>
 
-          {/* Chat Area - Shown conditionally on mobile */}
-          <div className={`col-span-2 flex flex-col h-full overflow-hidden ${!showMobileChat ? 'hidden md:flex' : 'flex'}`}>
-            {/* Chat Header */}
+          {/* Chat Area */}
+          <div className={`col-span-2 flex flex-col h-full overflow-hidden ${!showMobileChat ? "hidden md:flex" : "flex"}`}>
             <div className="border-b p-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
-                {/* Back button only on mobile */}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="md:hidden" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
                   onClick={() => setShowMobileChat(false)}
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={selectedConversation?.image || "/placeholder.svg"} 
-                    alt={selectedConversation?.name} 
-                  />
-                  <AvatarFallback>
-                    {selectedConversation?.name?.substring(0, 2) || "??"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">{selectedConversation?.name}</div>
-                  <div className="text-xs text-green-500">Online</div>
-                </div>
+                {selectedConversation ? (
+                  <>
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedConversation.image} alt={selectedConversation.name} />
+                      <AvatarFallback>{selectedConversation.name.substring(0, 2)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{selectedConversation.name}</div>
+                      <div className="text-xs text-green-500">Online</div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="font-medium">Select a conversation</div>
+                )}
               </div>
-              {/* <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="hidden sm:flex">
-                  <Phone className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="hidden sm:flex">
-                  <Video className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon">
-                  <Info className="h-4 w-4" />
-                </Button>
-              </div> */}
             </div>
 
-            {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4" id="message-container">
-              {messages[selectedConversation?.id]?.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}>
-                  <div className="flex items-end gap-2 max-w-[70%]">
-                    {message.sender === "them" && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage 
-                          src={selectedConversation?.image || "/placeholder.svg"} 
-                          alt={selectedConversation?.name} 
-                        />
-                        <AvatarFallback>
-                          {selectedConversation?.name?.substring(0, 2) || "??"}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div>
-                      <div
-                        className={`rounded-lg p-3 ${
-                          message.sender === "me" ? "bg-sky-600 text-white" : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {message.text}
+              {selectedConversation && messages[selectedConversation.id] ? (
+                messages[selectedConversation.id].map((message) => (
+                  <div key={message.id} className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}>
+                    <div className="flex items-end gap-2 max-w-[70%]">
+                      {message.sender === "them" && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={selectedConversation.image} alt={selectedConversation.name} />
+                          <AvatarFallback>{selectedConversation.name.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div>
+                        <div
+                          className={`rounded-lg p-3 ${message.sender === "me" ? "bg-sky-600 text-white" : "bg-gray-100 text-gray-800"
+                            }`}
+                        >
+                          {message.text}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 px-1">{message.time}</div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1 px-1">{message.time}</div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {/* Invisible element to scroll to */}
+                ))
+              ) : (
+                <div className="text-center py-6">No messages yet</div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input Area - Fixed at bottom */}
             <div className="border-t p-3 flex-shrink-0">
-              <div className="flex items-end gap-2">
-                <Button variant="ghost" size="icon" className="rounded-full flex-shrink-0">
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                <Textarea 
-                  placeholder="Type a message..." 
-                  className="flex-1 min-h-10 max-h-32 py-2 resize-none"
-                  value={newMessage}
-                  onChange={handleTextareaChange}
-                  onKeyDown={handleKeyDown}
-                  rows={1}
-                  style={{ height: 'auto' }}
-                />
-                <Button variant="ghost" size="icon" className="rounded-full flex-shrink-0">
-                  <Smile className="h-4 w-4" />
-                </Button>
-                <Button 
-                  size="icon" 
-                  className="rounded-full bg-sky-600 hover:bg-sky-700 flex-shrink-0"
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              {selectedConversation && (
+                <div className="flex items-end gap-2">
+                
+                  <Textarea
+                    placeholder="Type a message..."
+                    className="flex-1 min-h-10 max-h-32 py-2 resize-none"
+                    value={newMessage}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    style={{ height: "auto" }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full flex-shrink-0"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    className="rounded-full bg-sky-600 hover:bg-sky-700 flex-shrink-0"
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </Card>
     </div>
-  )
+  );
 }

@@ -420,7 +420,10 @@ export default function Header() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link to={`/${currentCommunity.community_id || currentCommunity.id}/community/settings`} className="flex items-center w-full">
+                  <Link
+                    to={`/${currentCommunity.community_id || currentCommunity.id}/community/settings`}
+                    className="flex items-center w-full"
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>

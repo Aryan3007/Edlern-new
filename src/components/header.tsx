@@ -77,7 +77,7 @@ export default function Header() {
             </Link> */}
             {
               isAuthenticated ? (
-                <button onClick={handleLogout} className="text-sm text-red-600  hover:text-red-500 duration-150 font-medium">
+                <button onClick={handleLogout} className="text-sm text-red-600 hover:text-red-500 duration-150 font-medium">
               Sign Out
             </button>
               ) : (

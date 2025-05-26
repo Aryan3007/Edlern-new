@@ -1,528 +1,379 @@
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+"use client"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Camera, Lock, Shield, CreditCard, LogOut } from "lucide-react"
-import { useEffect } from "react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Lock, Globe, Sparkles, CreditCard, HelpCircle, MoreHorizontal, Settings, Save, Menu } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const tabs = [
+  { id: "general", label: "General" },
+  { id: "payouts", label: "Payouts" },
+  { id: "pricing", label: "Pricing" },
+  { id: "billing", label: "Billing" },
+]
 
 export default function SettingsPage() {
-      useEffect(() => {
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      }, []);
-  return (
-    <div className="mx-auto max-w-7xl py-6">
-      <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">Settings</CardTitle>
-                <CardDescription>Manage your account settings and preferences</CardDescription>
+  const [activeTab, setActiveTab] = useState("general")
+  const [groupName, setGroupName] = useState("test")
+  const [groupDescription, setGroupDescription] = useState("")
+  const [privacy, setPrivacy] = useState("private")
+  const [freeTrialEnabled, setFreeTrialEnabled] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleSaveGeneral = () => {
+    console.log("Saving general settings...")
+  }
+
+  const handleSavePayouts = () => {
+    console.log("Saving payout settings...")
+  }
+
+  const handleSavePricing = () => {
+    console.log("Saving pricing settings...")
+  }
+
+  const handleSaveBilling = () => {
+    console.log("Saving billing settings...")
+  }
+
+  const SidebarContent = () => (
+    <nav className="space-y-1 p-4">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => {
+            setActiveTab(tab.id)
+            setSidebarOpen(false)
+          }}
+          className={cn(
+            "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+            activeTab === tab.id ? "bg-sky-600 text-white" : "text-foreground hover:bg-muted",
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  )
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "general":
+        return (
+          <div className="space-y-8">
+            {/* Icon and Cover Upload */}
+            <div className="flex flex-col lg:flex-row gap-8">
+              <div className="space-y-2">
+                <Label className="text-lg font-medium">Icon</Label>
+                <div className="w-32 h-32 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                  <div className="text-center">
+                    <Button variant="link" className="text-sky-600 p-0 h-auto">
+                      Upload
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Recommended:
+                  <br />
+                  128x128
+                </p>
+                <Button variant="outline" className="w-full">
+                  CHANGE
+                </Button>
               </div>
-              <Button>Save Changes</Button>
+
+              <div className="space-y-2">
+                <Label className="text-lg font-medium">Cover</Label>
+                <div className="w-full lg:w-64 h-32 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                  <div className="text-center">
+                    <Button variant="link" className="text-sky-600 p-0 h-auto">
+                      Upload
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Recommended:
+                  <br />
+                  1084x576
+                </p>
+                <Button variant="outline" className="w-full lg:w-64">
+                  CHANGE
+                </Button>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full">
-                <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="account">Account</TabsTrigger>
-                <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                <TabsTrigger value="privacy">Privacy</TabsTrigger>
-                <TabsTrigger value="billing">Billing</TabsTrigger>
-                <TabsTrigger value="danger">Danger Zone</TabsTrigger>
-              </TabsList>
 
-              <TabsContent value="profile" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Profile Picture</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      This will be displayed on your profile and in the community
-                    </p>
+            {/* Group Name */}
+            <div className="space-y-2">
+              <Label htmlFor="groupName" className="text-sm font-medium">
+                Group name
+              </Label>
+              <Input
+                id="groupName"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="w-full max-w-2xl"
+              />
+              <div className="text-right text-sm text-muted-foreground">{groupName.length} / 30</div>
+            </div>
+
+            {/* Group Description */}
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Group description"
+                value={groupDescription}
+                onChange={(e) => setGroupDescription(e.target.value)}
+                className="min-h-[100px] w-full max-w-2xl resize-none"
+              />
+              <div className="text-right text-sm text-muted-foreground">{groupDescription.length} / 150</div>
+            </div>
+
+            {/* Custom URL */}
+            <Card className="bg-sky-50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-800 w-full max-w-2xl">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-sky-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-medium">Stand out with a custom URL</h3>
+                      <p className="text-sky-600 text-sm break-all">skool.com/test-7338</p>
+                    </div>
                   </div>
-                  <div className="md:w-2/3 flex flex-col items-center md:items-start">
-                    <div className="relative">
-                      <Avatar className="h-24 w-24">
-                        <AvatarImage src="/placeholder.svg?height=96&width=96" alt="User profile" />
-                        <AvatarFallback className="text-2xl">AT</AvatarFallback>
-                      </Avatar>
-                      <Button variant="outline" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8">
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button variant="outline">Upload New</Button>
-                      <Button variant="ghost" className="text-red-500">
-                        Remove
-                      </Button>
-                    </div>
+                  <Button className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">CHANGE URL</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Privacy Settings */}
+            <div className="space-y-4 w-full max-w-2xl">
+              <RadioGroup value={privacy} onValueChange={setPrivacy} className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="private" id="private" className="mt-1" />
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    <Label htmlFor="private" className="font-medium">
+                      Private
+                    </Label>
                   </div>
                 </div>
+                <p className="text-sm text-muted-foreground ml-8">
+                  Only members can see who's in the group and what they post. Content is hidden from search engines.
+                </p>
 
-                <Separator />
-
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Personal Information</h3>
-                    <p className="text-sm text-gray-500 mt-1">Update your personal details</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input id="firstName" defaultValue="Aryan" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input id="lastName" defaultValue="Tyagi" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
-                      <Input id="username" defaultValue="aryantyagi" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" defaultValue="aryan.tyagi@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input id="location" defaultValue="New York, USA" />
-                    </div>
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="public" id="public" className="mt-1" />
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    <Label htmlFor="public" className="font-medium">
+                      Public
+                    </Label>
                   </div>
                 </div>
+                <p className="text-sm text-muted-foreground ml-8">
+                  Anyone can see who's in the group and what they post. Content is discoverable by search engines.
+                </p>
+              </RadioGroup>
+            </div>
 
-                <Separator />
+            {/* Save Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleSaveGeneral} className="bg-sky-600 hover:bg-sky-700 text-white">
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        )
 
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Bio</h3>
-                    <p className="text-sm text-gray-500 mt-1">Tell the community about yourself</p>
+      case "payouts":
+        return (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Payouts</h2>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-8">
+              <Card className="bg-muted">
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold">$0.00</div>
+                  <div className="text-sm text-muted-foreground mt-1">Account balance</div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-2">
+                <div className="font-medium">Next payout will be $0 in 2 days</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>$0 is pending</span>
+                  <HelpCircle className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-muted-foreground">No payouts yet</div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleSavePayouts} className="bg-sky-600 hover:bg-sky-700 text-white">
+                <Save className="h-4 w-4 mr-2" />
+                Update Payouts
+              </Button>
+            </div>
+          </div>
+        )
+
+      case "pricing":
+        return (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-semibold mb-2">Pricing</h2>
+              <p className="text-muted-foreground">
+                Make money by charging for access to your community.{" "}
+                <Button variant="link" className="p-0 h-auto text-sky-600">
+                  Learn more.
+                </Button>
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-muted-foreground rounded"></div>
+                    <span className="font-medium">Free</span>
+                    <span className="text-sky-600">2 members</span>
+                    <Badge className="bg-green-600 hover:bg-green-700">Current price</Badge>
                   </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bio">Bio</Label>
-                      <Textarea
-                        id="bio"
-                        className="min-h-[120px]"
-                        defaultValue="Self-improvement enthusiast focused on fitness, mindset, and productivity. Currently working on building my aesthetic physique and growing my online business."
-                      />
-                      <p className="text-xs text-gray-500">Brief description for your profile. URLs are hyperlinked.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="interests">Interests (comma separated)</Label>
-                      <Input
-                        id="interests"
-                        defaultValue="Fitness, Entrepreneurship, Mindfulness, Reading, Martial Arts"
-                      />
-                    </div>
-                  </div>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                <Separator />
-
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Social Links</h3>
-                    <p className="text-sm text-gray-500 mt-1">Connect your social media accounts</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="instagram">Instagram</Label>
-                      <Input id="instagram" defaultValue="instagram.com/aryantyagi" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="twitter">Twitter</Label>
-                      <Input id="twitter" defaultValue="" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      <Input id="website" defaultValue="" />
-                    </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <Button className="bg-sky-600 hover:bg-sky-700 text-white">ADD PRICE</Button>
+                  <div className="flex items-center gap-3">
+                    <Switch checked={freeTrialEnabled} onCheckedChange={setFreeTrialEnabled} />
+                    <span className="text-sm">Give members a 7-day free trial</span>
                   </div>
                 </div>
-              </TabsContent>
+              </CardContent>
+            </Card>
 
-              <TabsContent value="account" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Change Password</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Update your password regularly to keep your account secure
-                    </p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input id="currentPassword" type="password" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input id="newPassword" type="password" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input id="confirmPassword" type="password" />
-                    </div>
-                    <Button className="mt-2">
-                      <Lock className="h-4 w-4 mr-2" />
-                      Update Password
-                    </Button>
-                  </div>
-                </div>
+            {/* Save Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleSavePricing} className="bg-sky-600 hover:bg-sky-700 text-white">
+                <Save className="h-4 w-4 mr-2" />
+                Save Pricing
+              </Button>
+            </div>
+          </div>
+        )
 
-                <Separator />
+      case "billing":
+        return (
+          <div className="space-y-8">
+            <h2 className="text-2xl font-semibold">Billing</h2>
 
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-                    <p className="text-sm text-gray-500 mt-1">Add an extra layer of security to your account</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Two-Factor Authentication</h4>
-                        <p className="text-sm text-gray-500">Protect your account with 2FA</p>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <p>Payment method — DISCOVER ending in 6242.</p>
+              <p>Your 14-day free trial ends on May 26th, 2025.</p>
+            </div>
 
-                <Separator />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button variant="outline" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Update payment method
+              </Button>
+              <Button variant="outline">Manage subscription</Button>
+            </div>
 
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Language & Region</h3>
-                    <p className="text-sm text-gray-500 mt-1">Set your preferred language and regional settings</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="language">Language</Label>
-                      <Select defaultValue="en">
-                        <SelectTrigger id="language">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
-                          <SelectItem value="de">German</SelectItem>
-                          <SelectItem value="hi">Hindi</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">Timezone</Label>
-                      <Select defaultValue="est">
-                        <SelectTrigger id="timezone">
-                          <SelectValue placeholder="Select timezone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pst">Pacific Time (PST)</SelectItem>
-                          <SelectItem value="mst">Mountain Time (MST)</SelectItem>
-                          <SelectItem value="cst">Central Time (CST)</SelectItem>
-                          <SelectItem value="est">Eastern Time (EST)</SelectItem>
-                          <SelectItem value="gmt">Greenwich Mean Time (GMT)</SelectItem>
-                          <SelectItem value="ist">Indian Standard Time (IST)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
+            <Separator />
 
-              <TabsContent value="notifications" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Email Notifications</h3>
-                    <p className="text-sm text-gray-500 mt-1">Manage the emails you receive</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Comments</h4>
-                        <p className="text-sm text-gray-500">When someone comments on your posts</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Mentions</h4>
-                        <p className="text-sm text-gray-500">When someone mentions you</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Follows</h4>
-                        <p className="text-sm text-gray-500">When someone follows you</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Direct Messages</h4>
-                        <p className="text-sm text-gray-500">When you receive a new message</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Community Updates</h4>
-                        <p className="text-sm text-gray-500">News and announcements</p>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Automatic affiliate earnings</h3>
+              <p className="text-muted-foreground">
+                If somebody creates a group from your group, we'll automatically pay you 40% every month. This way Skool
+                becomes an income stream, not a cost. Earnings will go to this admin:
+              </p>
 
-                <Separator />
+              <div className="flex flex-wrap items-center gap-3">
+                <Avatar>
+                  <AvatarImage src="/placeholder.svg?height=40&width=40" />
+                  <AvatarFallback>AT</AvatarFallback>
+                </Avatar>
+                <span className="font-medium">Aryan Tyagi</span>
+                <Button variant="link" className="text-sky-600 p-0 h-auto">
+                  (Change)
+                </Button>
+                <Button variant="link" className="text-muted-foreground p-0 h-auto">
+                  View referrals
+                </Button>
+              </div>
+            </div>
 
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Push Notifications</h3>
-                    <p className="text-sm text-gray-500 mt-1">Control your mobile and desktop notifications</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Everything</h4>
-                        <p className="text-sm text-gray-500">All notifications</p>
-                      </div>
-                      <Switch />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Direct Messages</h4>
-                        <p className="text-sm text-gray-500">When you receive new messages</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Mentions</h4>
-                        <p className="text-sm text-gray-500">When someone mentions you</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
+            <Separator />
 
-              <TabsContent value="privacy" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Privacy Settings</h3>
-                    <p className="text-sm text-gray-500 mt-1">Control who can see your profile and activity</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="profileVisibility">Profile Visibility</Label>
-                      <Select defaultValue="public">
-                        <SelectTrigger id="profileVisibility">
-                          <SelectValue placeholder="Select visibility" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="public">Public (Everyone)</SelectItem>
-                          <SelectItem value="community">Community Members Only</SelectItem>
-                          <SelectItem value="followers">Followers Only</SelectItem>
-                          <SelectItem value="private">Private (Only Me)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Show Online Status</h4>
-                        <p className="text-sm text-gray-500">Let others see when you're active</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Show Activity Status</h4>
-                        <p className="text-sm text-gray-500">Show your recent activity in the community</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Allow Direct Messages</h4>
-                        <p className="text-sm text-gray-500">Control who can send you messages</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Allow Mentions</h4>
-                        <p className="text-sm text-gray-500">Control who can mention you in posts</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                  </div>
-                </div>
+            <Button variant="link" className="text-destructive p-0 h-auto">
+              Delete group
+            </Button>
 
-                <Separator />
+            {/* Save Button */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleSaveBilling} className="bg-sky-600 hover:bg-sky-700 text-white">
+                <Save className="h-4 w-4 mr-2" />
+                Update Billing
+              </Button>
+            </div>
+          </div>
+        )
 
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Data & Privacy</h3>
-                    <p className="text-sm text-gray-500 mt-1">Manage your personal data and privacy</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Data Collection</h4>
-                        <p className="text-sm text-gray-500">
-                          Allow us to collect usage data to improve your experience
-                        </p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Personalized Ads</h4>
-                        <p className="text-sm text-gray-500">See ads based on your activity and interests</p>
-                      </div>
-                      <Switch />
-                    </div>
-                    <Button variant="outline" className="mt-2">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Download My Data
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
+      default:
+        return (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Content for {activeTab} tab</p>
+          </div>
+        )
+    }
+  }
 
-              <TabsContent value="billing" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Payment Methods</h3>
-                    <p className="text-sm text-gray-500 mt-1">Manage your payment methods and billing information</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <Card>
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CreditCard className="h-8 w-8 text-gray-500" />
-                          <div>
-                            <h4 className="font-medium">Visa ending in 4242</h4>
-                            <p className="text-sm text-gray-500">Expires 12/2025</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-red-500">
-                            Remove
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Button variant="outline">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Add Payment Method
-                    </Button>
-                  </div>
-                </div>
+  return (
+    <div className="h-[calc(100vh-88px)] max-w-7xl mx-auto flex flex-col bg-background">
+      {/* Fixed Header */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <div className="bg-muted/30 h-full">
+                <SidebarContent />
+              </div>
+            </SheetContent>
+          </Sheet>
 
-                <Separator />
-
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium">Billing History</h3>
-                    <p className="text-sm text-gray-500 mt-1">View your past invoices and billing history</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <div className="rounded-md border">
-                      <div className="flex items-center justify-between p-4 border-b">
-                        <div className="font-medium">Invoice #12345</div>
-                        <Badge>Paid</Badge>
-                      </div>
-                      <div className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm">Premium Membership - Annual</p>
-                          <p className="text-xs text-gray-500">Apr 15, 2023</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$99.00</p>
-                          <Button variant="link" size="sm" className="h-auto p-0">
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="rounded-md border">
-                      <div className="flex items-center justify-between p-4 border-b">
-                        <div className="font-medium">Invoice #12344</div>
-                        <Badge>Paid</Badge>
-                      </div>
-                      <div className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm">Aesthetic Body 2.0 Course</p>
-                          <p className="text-xs text-gray-500">Mar 10, 2023</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$49.00</p>
-                          <Button variant="link" size="sm" className="h-auto p-0">
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="danger" className="mt-6 space-y-6">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="md:w-1/3">
-                    <h3 className="text-lg font-medium text-red-500">Danger Zone</h3>
-                    <p className="text-sm text-gray-500 mt-1">Irreversible and destructive actions</p>
-                  </div>
-                  <div className="md:w-2/3 space-y-4">
-                    <Card className="border-red-200">
-                      <CardContent className="p-4">
-                        <h4 className="font-medium">Deactivate Account</h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Temporarily disable your account. You can reactivate anytime by logging in.
-                        </p>
-                        <Button variant="outline" className="mt-4">
-                          Deactivate Account
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-red-200">
-                      <CardContent className="p-4">
-                        <h4 className="font-medium text-red-500">Delete Account</h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Permanently delete your account and all your data. This action cannot be undone.
-                        </p>
-                        <Button variant="destructive" className="mt-4">
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Delete Account
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
+      {/* Main Content Area */}
+      <div className="flex flex-1 gap-4 overflow-hidden">
+        {/* Desktop Sidebar - Fixed */}
+        <Card className="hidden lg:block w-64 min-w-64 border-r bg-muted/30">
+          <SidebarContent />
         </Card>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <Card className="p-4 lg:p-8 max-w-4xl">{renderTabContent()}</Card>
+        </div>
       </div>
     </div>
   )

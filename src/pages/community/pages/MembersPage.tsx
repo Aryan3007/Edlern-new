@@ -1,150 +1,156 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useCallback } from "react"
-import { useParams } from "react-router-dom"
-import { useSelector } from "react-redux"
-import { RootState } from "@/store/store"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter, Calendar, MessageSquare, PentagonIcon, RefreshCw, Check, X, Eye } from "lucide-react"
-import { CommunitySidebar } from "../comps/community-sidebar"
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Filter, Calendar, MessageSquare, PentagonIcon, RefreshCw, Check, X, Eye } from "lucide-react";
+import { CommunitySidebar } from "../comps/community-sidebar";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 // Interface for individual member from API
 interface APIMember {
-  id: number
-  created_at: string
-  updated_at: string
-  role: "creator" | "member" | "moderator"
-  status: "approved" | "pending" | "rejected"
-  reason: string | null
-  community: number
-  user: string
-  approved_by: string | null
-  fullname: string
-  profile_picture: string | null
-  bio: string
+  id: number;
+  created_at: string;
+  updated_at: string;
+  role: "creator" | "member" | "moderator";
+  status: "approved" | "pending" | "rejected";
+  reason: string | null;
+  community: number;
+  user: string;
+  approved_by: string | null;
+  fullname: string;
+  profile_picture: string | null;
+  bio: string;
+  is_online: boolean;
 }
 
 // Interface for user question response in join request
 interface UserQuestionResponse {
-  id: number
-  question_text: string
-  answer_text: string
-  is_deleted: boolean
-  user: string
-  question: number
+  id: number;
+  question_text: string;
+  answer_text: string;
+  is_deleted: boolean;
+  user: string;
+  question: number;
 }
 
 // Interface for join request from API
 interface APIJoinRequest {
-  id: number
-  community: number
-  first_name: string
-  last_name: string
-  user: string
-  status: "pending" | "approved" | "rejected"
-  user_question_response: UserQuestionResponse[]
+  id: number;
+  community: number;
+  first_name: string;
+  last_name: string;
+  user: string;
+  status: "pending" | "approved" | "rejected";
+  user_question_response: UserQuestionResponse[];
 }
 
 // Interface for API response for members
 interface APIResponse {
-  message: string
-  success: boolean
+  message: string;
+  success: boolean;
   data: {
-    next: string | null
-    previous: string | null
-    count: number
-    limit: number
-    current_page: number
-    total_pages: number
-    results: APIMember[]
-  }
+    next: string | null;
+    previous: string | null;
+    count: number;
+    limit: number;
+    current_page: number;
+    total_pages: number;
+    results: APIMember[];
+  };
 }
 
 // Interface for member data used in UI
 interface Member {
-  id: number
-  name: string
-  image: string
-  bio: string
-  role: string
-  joinedDate: string
+  id: number;
+  name: string;
+  is_online: boolean;
+  image: string;
+  bio: string;
+  role: string;
+  joinedDate: string;
 }
 
 // Interface for join request data used in UI
 interface JoinRequest {
-  id: number
-  name: string
-  status: "pending" | "approved" | "rejected"
-  userQuestionResponses: UserQuestionResponse[]
+  id: number;
+  name: string;
+  status: "pending" | "approved" | "rejected";
+  userQuestionResponses: UserQuestionResponse[];
 }
 
 // Interface for answers dialog state
 interface AnswersDialog {
-  open: boolean
-  requestId: number | null
-  name: string
-  responses: UserQuestionResponse[]
+  open: boolean;
+  requestId: number | null;
+  name: string;
+  responses: UserQuestionResponse[];
 }
 
 export default function MembersPage() {
-  const { community_id } = useParams<{ community_id: string }>()
-  const accessToken = useSelector((state: RootState) => state.auth.accessToken)
-  const [members, setMembers] = useState<Member[]>([])
-  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
-  const [loadingRequests, setLoadingRequests] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
-  const [errorRequests, setErrorRequests] = useState<string | null>(null)
-  const [page, setPage] = useState<number>(1)
-  const [totalPages, setTotalPages] = useState<number>(1)
-  const [searchQuery, setSearchQuery] = useState<string>("")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "role-asc" | "role-desc">("newest")
-  const [activeTab, setActiveTab] = useState<"all" | "creator" | "moderator" | "member" | "requests">("all")
+  const { community_id } = useParams<{ community_id: string }>();
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const navigate = useNavigate();
+  const [members, setMembers] = useState<Member[]>([]);
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingRequests, setLoadingRequests] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorRequests, setErrorRequests] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "role-asc" | "role-desc">("newest");
+  const [activeTab, setActiveTab] = useState<"all" | "creator" | "moderator" | "member" | "requests">("all");
   const [confirmationDialog, setConfirmationDialog] = useState<{
-    open: boolean
-    requestId: number | null
-    action: "approved" | "rejected" | null
-  }>({ open: false, requestId: null, action: null })
+    open: boolean;
+    requestId: number | null;
+    action: "approved" | "rejected" | null;
+  }>({ open: false, requestId: null, action: null });
   const [answersDialog, setAnswersDialog] = useState<AnswersDialog>({
     open: false,
     requestId: null,
     name: "",
     responses: [],
-  })
-  const limit = 10
+  });
+  const limit = 10;
 
   // Debounce function for search handler
   const debounce = <T extends (query: string) => void>(func: T, delay: number) => {
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: NodeJS.Timeout;
     return (query: string) => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => func(query), delay)
-    }
-  }
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(query), delay);
+    };
+  };
 
+  // Fetch members
   const fetchMembers = useCallback(async () => {
     if (!community_id || !accessToken) {
-      setError("Missing community ID or authentication token")
-      setLoading(false)
-      return
+      setError("Missing community ID or authentication token");
+      setLoading(false);
+      return;
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
       const queryParams = new URLSearchParams({
         page: String(page),
         limit: String(limit),
         ...(searchQuery && { search: searchQuery }),
-        ...(sortBy && { sort: sortBy === "newest" ? "-created_at" : sortBy === "oldest" ? "created_at" : sortBy === "role-asc" ? "role" : "-role" }),
+        ...(sortBy && {
+          sort: sortBy === "newest" ? "-created_at" : sortBy === "oldest" ? "created_at" : sortBy === "role-asc" ? "role" : "-role",
+        }),
         ...(activeTab !== "all" && activeTab !== "requests" && { role: activeTab }),
-      })
+      });
 
       const response = await fetch(
         `https://edlern.toolsfactory.tech/api/v1/community/${community_id}/members/?${queryParams}`,
@@ -155,20 +161,21 @@ export default function MembersPage() {
             "Content-Type": "application/json",
           },
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const data: APIResponse = await response.json()
+      const data: APIResponse = await response.json();
       if (!data.success) {
-        throw new Error(data.message)
+        throw new Error(data.message);
       }
 
       const fetchedMembers: Member[] = data.data.results.map((member) => ({
         id: member.id,
         name: member.fullname,
+        is_online: member.is_online,
         image: member.profile_picture || `/placeholder.svg?height=40&width=40&text=${member.fullname.charAt(0)}`,
         bio: member.bio || "No bio provided",
         role: member.role,
@@ -177,27 +184,28 @@ export default function MembersPage() {
           day: "numeric",
           year: "numeric",
         }),
-      }))
+      }));
 
-      setMembers(fetchedMembers)
-      setTotalPages(data.data.total_pages)
-      setError(null)
+      setMembers(fetchedMembers);
+      setTotalPages(data.data.total_pages);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch members")
+      setError(err instanceof Error ? err.message : "Failed to fetch members");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [community_id, accessToken, page, searchQuery, sortBy, activeTab])
+  }, [community_id, accessToken, page, searchQuery, sortBy, activeTab]);
 
+  // Fetch join requests
   const fetchJoinRequests = useCallback(async () => {
     if (!community_id || !accessToken) {
-      setErrorRequests("Missing community ID or authentication token")
-      setLoadingRequests(false)
-      return
+      setErrorRequests("Missing community ID or authentication token");
+      setLoadingRequests(false);
+      return;
     }
 
     try {
-      setLoadingRequests(true)
+      setLoadingRequests(true);
       const response = await fetch(
         `https://edlern.toolsfactory.tech/api/v1/community/${community_id}/community-joining-requests/`,
         {
@@ -207,15 +215,15 @@ export default function MembersPage() {
             "Content-Type": "application/json",
           },
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const data: { message: string; success: boolean; data: { results: APIJoinRequest[] } } = await response.json()
+      const data: { message: string; success: boolean; data: { results: APIJoinRequest[] } } = await response.json();
       if (!data.success) {
-        throw new Error(data.message)
+        throw new Error(data.message);
       }
 
       const fetchedRequests: JoinRequest[] = data.data.results.map((request) => ({
@@ -223,21 +231,22 @@ export default function MembersPage() {
         name: `${request.first_name} ${request.last_name}`,
         status: request.status,
         userQuestionResponses: request.user_question_response.filter((response) => !response.is_deleted),
-      }))
+      }));
 
-      setJoinRequests(fetchedRequests)
-      setErrorRequests(null)
+      setJoinRequests(fetchedRequests);
+      setErrorRequests(null);
     } catch (err) {
-      setErrorRequests(err instanceof Error ? err.message : "Failed to fetch join requests")
+      setErrorRequests(err instanceof Error ? err.message : "Failed to fetch join requests");
     } finally {
-      setLoadingRequests(false)
+      setLoadingRequests(false);
     }
-  }, [community_id, accessToken])
+  }, [community_id, accessToken]);
 
+  // Handle status update for join requests
   const handleStatusUpdate = async (requestId: number, status: "approved" | "rejected") => {
     if (!community_id || !accessToken) {
-      setErrorRequests("Missing community ID or authentication token")
-      return
+      setErrorRequests("Missing community ID or authentication token");
+      return;
     }
 
     try {
@@ -251,78 +260,146 @@ export default function MembersPage() {
           },
           body: JSON.stringify({ status }),
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json()
+      const data = await response.json();
       if (!data.success) {
-        throw new Error(data.message)
+        throw new Error(data.message);
       }
 
       setJoinRequests((prev) =>
-        prev.map((req) =>
-          req.id === requestId ? { ...req, status } : req
-        )
-      )
-      setConfirmationDialog({ open: false, requestId: null, action: null })
+        prev.map((req) => (req.id === requestId ? { ...req, status } : req))
+      );
+      setConfirmationDialog({ open: false, requestId: null, action: null });
       if (status === "approved") {
-        fetchMembers()
+        fetchMembers();
       }
     } catch (err) {
-      setErrorRequests(err instanceof Error ? err.message : "Failed to update request status")
+      setErrorRequests(err instanceof Error ? err.message : "Failed to update request status");
     }
-  }
+  };
 
+  // Handle chat button click
+  const handleChatClick = async (memberId: number, memberName: string) => {
+    if (!community_id || !accessToken) {
+      setError("Missing community ID or authentication token");
+      return;
+    }
+
+    try {
+      // Step 1: Check if a chat room already exists
+      const checkResponse = await fetch(
+        `https://edlern.toolsfactory.tech/api/v1/chats/community/${community_id}/member-chat/check-one-to-one-chat/?other_member_id=${memberId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const checkData = await checkResponse.json();
+      if (!checkResponse.ok) {
+        throw new Error(checkData.message || "Failed to check chat room");
+      }
+
+      let roomId: number;
+      if (checkData.success && checkData.message === "Conversation already exists") {
+        // Chat room exists
+        roomId = checkData.data.chat_room_id;
+      } else {
+        // Step 2: Create a new chat room if none exists
+        const createResponse = await fetch(
+          `https://edlern.toolsfactory.tech/api/v1/chats/community/${community_id}/member-chat/create-one-to-one-chat/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ other_member_id: String(memberId) }),
+          }
+        );
+
+        const createData = await createResponse.json();
+        if (!createResponse.ok || !createData.success) {
+          throw new Error(createData.message || "Failed to create chat room");
+        }
+        roomId = createData.data.room_id;
+      }
+
+      // Step 3: Navigate to MessagesPage with roomId and member details
+      navigate(`/27/community/messages`, {
+        state: {
+          roomId,
+          memberId,
+          memberName,
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to initiate chat");
+    }
+  };
+
+  // Fetch data based on active tab
   useEffect(() => {
     if (activeTab === "requests") {
-      fetchJoinRequests()
+      fetchJoinRequests();
     } else {
-      fetchMembers()
+      fetchMembers();
     }
-  }, [fetchMembers, fetchJoinRequests, activeTab])
+  }, [fetchMembers, fetchJoinRequests, activeTab]);
 
+  // Scroll to top on mount
   useEffect(() => {
     window.scrollTo({
       top: 0,
       behavior: "smooth",
-    })
-  }, [])
+    });
+  }, []);
 
+  // Handle search input
   const handleSearch = debounce((value: string) => {
-    setSearchQuery(value)
-    setPage(1)
-  }, 300)
+    setSearchQuery(value);
+    setPage(1);
+  }, 300);
 
+  // Handle sort change
   const handleSortChange = (value: "newest" | "oldest" | "role-asc" | "role-desc") => {
-    setSortBy(value)
-    setPage(1)
-  }
+    setSortBy(value);
+    setPage(1);
+  };
 
+  // Handle tab change
   const handleTabChange = (value: string) => {
     if (["all", "creator", "moderator", "member", "requests"].includes(value)) {
-      setActiveTab(value as "all" | "creator" | "moderator" | "member" | "requests")
-      setPage(1)
+      setActiveTab(value as "all" | "creator" | "moderator" | "member" | "requests");
+      setPage(1);
     }
-  }
+  };
 
+  // Handle page change
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      setPage(newPage)
+      setPage(newPage);
     }
-  }
+  };
 
+  // Handle retry on error
   const handleRetry = () => {
-    setError(null)
-    setErrorRequests(null)
+    setError(null);
+    setErrorRequests(null);
     if (activeTab === "requests") {
-      fetchJoinRequests()
+      fetchJoinRequests();
     } else {
-      fetchMembers()
+      fetchMembers();
     }
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
@@ -461,7 +538,11 @@ export default function MembersPage() {
                                           </Button>
                                         </>
                                       ) : (
-                                        <Button variant="outline" size="sm" className={`text-sm capitalize ${request.status === "approved" ? "text-green-600" : "text-red-600"}`}>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className={`text-sm capitalize ${request.status === "approved" ? "text-green-600" : "text-red-600"}`}
+                                        >
                                           {request.status}
                                         </Button>
                                       )}
@@ -505,11 +586,19 @@ export default function MembersPage() {
                                 </Avatar>
                                 <div className="flex-1">
                                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
-                                    <h3 className="font-medium text-lg">{member.name}</h3>
+                                    <h3 className="font-medium text-lg">
+                                      {member.name}
+                                      {member.is_online ? (
+                                        <span className="text-green-600 text-xs border-green-500 border rounded-full ml-2 px-2">Online</span>
+                                      ) : (
+                                        <span className="text-red-500 text-xs border-red-500 border ml-2 px-2 rounded-full">Offline</span>
+                                      )}
+                                    </h3>
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       className="gap-2"
+                                      onClick={() => handleChatClick(member.id, member.name)}
                                       aria-label={`Chat with ${member.name}`}
                                     >
                                       <MessageSquare className="h-4 w-4" />
@@ -584,9 +673,7 @@ export default function MembersPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {confirmationDialog.action === "approved" ? "Approve Join Request" : "Reject Join Request"}
-            </DialogTitle>
+            <DialogTitle>{confirmationDialog.action === "approved" ? "Approve Join Request" : "Reject Join Request"}</DialogTitle>
             <DialogDescription>
               Are you sure you want to {confirmationDialog.action} this join request?
               {confirmationDialog.action === "approved"
@@ -622,7 +709,9 @@ export default function MembersPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Join Request Answers for {answersDialog.name}</DialogTitle>
-            <DialogDescription>Below are the answers provided by {answersDialog.name} for the community join questions.</DialogDescription>
+            <DialogDescription>
+              Below are the answers provided by {answersDialog.name} for the community join questions.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
             {answersDialog.responses.length === 0 ? (
@@ -647,5 +736,5 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
